@@ -10,3 +10,10 @@ export async function GET(request: Request) {
     .from(conversations).where(condition).orderBy(desc(conversations.createdAt));
   return NextResponse.json(rows);
 }
+
+export async function DELETE(request: Request) {
+  const docId = Number(new URL(request.url).searchParams.get('docId'));
+  if (!Number.isInteger(docId) || docId <= 0) return NextResponse.json({ error: 'Invalid document ID' }, { status: 400 });
+  await db.delete(conversations).where(sql`${conversations.doc_ids} @> ${JSON.stringify([docId])}::jsonb`);
+  return NextResponse.json({ success: true });
+}

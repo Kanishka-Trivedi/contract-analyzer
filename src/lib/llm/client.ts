@@ -120,7 +120,7 @@ export async function* streamChatCompletion(
         id?: string;
         function?: { name?: string; arguments?: string };
       };
-      const otherFields = { ...rawCall };
+      const otherFields: Record<string, unknown> = { ...rawCall };
       delete otherFields.function;
       delete otherFields.index;
       delete otherFields.id;
