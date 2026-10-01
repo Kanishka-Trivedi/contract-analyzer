@@ -128,3 +128,29 @@
     @apply font-sans;
   }
 }
+
+.pdf-text-layer {
+  color: transparent;
+  user-select: text;
+}
+
+.pdf-text-layer span {
+  position: absolute;
+  white-space: pre;
+  transform-origin: 0 0;
+}
+
+.citation-highlight {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 2px;
+  background: rgb(250 204 21 / 0.42);
+  box-shadow: 0 0 0 1px rgb(234 179 8 / 0.25);
+  animation: citation-pulse 900ms ease-out 1;
+}
+
+@keyframes citation-pulse {
+  0% { background: rgb(250 204 21 / 0.8); }
+  100% { background: rgb(250 204 21 / 0.42); }
+}

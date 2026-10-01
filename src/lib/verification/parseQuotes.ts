@@ -11,6 +11,33 @@ export interface VerifiedParsedQuote extends ParsedQuote, Omit<VerifyResult, 'st
   status: 'verified' | 'partial' | 'unverified';
 }
 
+export interface QuotePageSegment {
+  pageNo: number;
+  text: string;
+}
+
+export function addQuotePageSegments(
+  quotes: VerifiedParsedQuote[],
+  docsById: Record<string, DocRef>,
+): VerifiedParsedQuote[] {
+  return quotes.map((quote) => {
+    const doc = quote.docId ? docsById[quote.docId] : undefined;
+    if (!doc) return quote;
+    return {
+      ...quote,
+      occurrences: quote.occurrences.map((occurrence) => ({
+        ...occurrence,
+        segments: doc.pages
+          .filter((page) => occurrence.start < page.end && occurrence.end > page.start)
+          .map((page) => ({
+            pageNo: page.pageNo,
+            text: doc.fullText.slice(Math.max(occurrence.start, page.start), Math.min(occurrence.end, page.end)),
+          })),
+      })),
+    };
+  });
+}
+
 export function extractQuotes(text: string): ParsedQuote[] {
   const quotes: ParsedQuote[] = [];
   // Match <quote doc="ID">...</quote>

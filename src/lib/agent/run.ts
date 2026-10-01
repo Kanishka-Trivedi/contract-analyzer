@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { documents, pages } from '@/lib/db/schema';
-import { verifyAnswerQuotes, VerifiedParsedQuote } from '@/lib/verification/parseQuotes';
+import { addQuotePageSegments, verifyAnswerQuotes, VerifiedParsedQuote } from '@/lib/verification/parseQuotes';
 import { streamChatCompletion, LLMMessage } from '@/lib/llm/client';
 import { executeTool, TOOL_DEFINITIONS, ToolCoverage } from './tools';
 
@@ -97,7 +97,7 @@ export async function* runAgent(options: {
 
   const finish = async function* (): AsyncGenerator<AgentEvent> {
     const docs = await docsForVerification(options.docIds);
-    const quotes = verifyAnswerQuotes(answer, docs);
+    const quotes = addQuotePageSegments(verifyAnswerQuotes(answer, docs), docs);
     yield { type: 'quotes', items: quotes };
     yield { type: 'coverage', coverage };
     yield { type: 'done', answer, quotes, coverage, no_verified_quotes: !quotes.some((quote) => quote.status !== 'unverified'), tool_trace: toolTrace };
