@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "make-fixtures": "tsx scripts/make-fixtures.ts",
+    "db:push": "drizzle-kit push",
+    "db:setup": "node scripts/setup-db.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -30,13 +35,17 @@
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.4",
     "@types/pdfjs-dist": "^2.10.377",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "docx": "^9.8.1",
     "dotenv": "^18.0.5",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "pdfkit": "^0.20.2",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"
   }

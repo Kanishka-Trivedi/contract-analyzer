@@ -1,5 +1,5 @@
-import { pgTable, serial, text, varchar, integer, timestamp, boolean, jsonb, real, customType } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, serial, text, varchar, integer, timestamp, boolean, jsonb, real, customType, index } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
 
 const bytea = customType<{ data: Buffer; driverData: unknown }>({
   dataType() {
@@ -20,6 +20,7 @@ export const documents = pgTable('documents', {
   file_bytes: bytea('file_bytes'), // storing directly as requested
   full_text: text('full_text'),
   norm_text: text('norm_text'),
+  norm_map: jsonb('norm_map'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -51,9 +52,10 @@ export const chunks = pgTable('chunks', {
   text: text('text').notNull(),
   start_offset: integer('start_offset').notNull(),
   end_offset: integer('end_offset').notNull(),
-  // For search - normally we'd use a raw SQL for tsvector, but for basic Drizzle schema we'll define it or manage it in migrations
-  tsv: text('tsv'), // Placeholder for tsvector column, or we can just rely on ILIKE/pg_trgm initially if simpler
-});
+  tsv: text('tsv'),
+}, (table) => ({
+  tsvIdx: index('tsv_idx').using('gin', sql`${table.tsv} gin_trgm_ops`)
+}));
 
 export const conversations = pgTable('conversations', {
   id: serial('id').primaryKey(),
