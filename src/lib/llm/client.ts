@@ -5,6 +5,8 @@ export type LLMToolCall = {
   id?: string;
   name?: string;
   arguments?: string;
+  extra_content?: unknown;
+  [key: string]: unknown;
 };
 
 export type LLMDelta = {
@@ -18,7 +20,7 @@ export type LLMMessage = {
   content: string;
   tool_call_id?: string;
   name?: string;
-  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
+  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string }; extra_content?: unknown; [key: string]: unknown }>;
 };
 
 const MAX_ATTEMPTS = 3;
@@ -112,12 +114,24 @@ export async function* streamChatCompletion(
 
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta;
-    const calls = delta?.tool_calls?.map((call) => ({
-      index: call.index,
-      id: call.id,
-      name: call.function?.name,
-      arguments: call.function?.arguments,
-    }));
+    const calls = delta?.tool_calls?.map((call) => {
+      const rawCall = call as unknown as Record<string, unknown> & {
+        index: number;
+        id?: string;
+        function?: { name?: string; arguments?: string };
+      };
+      const otherFields = { ...rawCall };
+      delete otherFields.function;
+      delete otherFields.index;
+      delete otherFields.id;
+      return {
+        ...otherFields,
+        index: rawCall.index,
+        id: rawCall.id,
+        name: rawCall.function?.name,
+        arguments: rawCall.function?.arguments,
+      };
+    });
     yield {
       content: delta?.content || undefined,
       toolCalls: calls && calls.length > 0 ? calls : undefined,

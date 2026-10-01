@@ -106,7 +106,7 @@ export async function* runAgent(options: {
   try {
     for (let round = 0; round < maxRounds; round++) {
       if (options.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-      const responseCalls: Record<number, { id: string; name: string; arguments: string }> = {};
+      const responseCalls: Record<number, { id: string; name: string; arguments: string; [key: string]: unknown }> = {};
       let responseText = '';
       for await (const delta of streamChatCompletion(messages, TOOL_DEFINITIONS, options.signal)) {
         if (delta.content) {
@@ -120,6 +120,11 @@ export async function* runAgent(options: {
           if (call.id) entry.id = call.id;
           if (call.name) entry.name += call.name;
           if (call.arguments) entry.arguments += call.arguments;
+          for (const [key, value] of Object.entries(call)) {
+            if (key !== 'index' && key !== 'id' && key !== 'name' && key !== 'arguments' && value !== undefined) {
+              entry[key] = value;
+            }
+          }
           responseCalls[call.index] = entry;
         }
       }
@@ -130,7 +135,14 @@ export async function* runAgent(options: {
         return;
       }
 
-      messages.push({ role: 'assistant', content: responseText, tool_calls: calls.map((call) => ({ id: call.id, type: 'function', function: { name: call.name, arguments: call.arguments } })) });
+      messages.push({
+        role: 'assistant',
+        content: responseText,
+        tool_calls: calls.map((call) => {
+          const { id, name, arguments: callArguments, ...otherFields } = call;
+          return { ...otherFields, id, type: 'function' as const, function: { name, arguments: callArguments } };
+        }),
+      });
       for (const call of calls) {
         toolCallsUsed += 1;
         const trace = { name: call.name, arguments: call.arguments };
