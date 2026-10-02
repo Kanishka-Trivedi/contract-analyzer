@@ -142,7 +142,7 @@ export default function LibraryClient({ initialDocs }: Props) {
           {/* Ask across N docs — 2+ ready docs */}
           {selectedReady.length >= 2 ? (
             <Link
-              href={`/documents/${multiDocIds}`}
+              href={`/documents/${selectedReady[0].id}?docs=${selectedReady.map(d => d.id).join(',')}`}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs font-medium hover:bg-emerald-700 transition-colors"
             >
               <MessagesSquare className="h-3.5 w-3.5" /> Ask across {selectedReady.length} documents

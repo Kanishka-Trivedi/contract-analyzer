@@ -84,7 +84,11 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const hydrated = useSyncExternalStore(() => () => {}, () => true, () => false);
 
-  const docIdsStr = useMemo(() => documents.map(d => d.id).join(','), [documents]);
+  const routeBase = useMemo(() => {
+    const firstId = documents[0].id;
+    const allIds = documents.map(d => d.id).join(',');
+    return `/documents/${firstId}?docs=${allIds}`;
+  }, [documents]);
 
   const openConversation = useCallback(async (id: number) => {
     abortRef.current?.abort();
@@ -96,9 +100,9 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
     if (!response.ok) return setError('Could not open that conversation.');
     const data = await response.json();
     setConversationId(id);
-    router.replace(`/documents/${docIdsStr}?chat=${id}`);
+    router.replace(`${routeBase}&chat=${id}`);
     setMessages(data.messages.filter((message: ChatMessage) => message.role === 'user' || message.role === 'assistant').map((message: ChatMessage) => ({ ...message, quotes: message.quotes_json || [], coverage: message.coverage_json, trace: message.tool_trace_json || [] })));
-  }, [docIdsStr, router]);
+  }, [routeBase, router]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -218,7 +222,7 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
             const latest = refreshedConversations[0];
             conversationIdRef.current = latest.id;
             setConversationId(latest.id);
-            router.replace(`/documents/${docIdsStr}?chat=${latest.id}`);
+            router.replace(`${routeBase}&chat=${latest.id}`);
           }
         }
       }
@@ -235,7 +239,7 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
     setMessages([]);
     setStreaming(false);
     setError('');
-    router.replace(`/documents/${docIdsStr}?chat=new`);
+    router.replace(`${routeBase}&chat=new`);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
