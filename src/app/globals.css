@@ -131,6 +131,7 @@
 
 .pdf-text-layer {
   color: transparent;
+  pointer-events: none;
   user-select: text;
 }
 
