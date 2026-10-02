@@ -112,10 +112,10 @@ export default function LibraryClient({ initialDocs }: Props) {
         <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
           <span className="text-indigo-700 font-medium">{selected.size} selected</span>
           <Link
-            href={`/chat/multi?docs=${[...selected].join(',')}`}
+            href={selected.size === 2 ? `/compare/new?docs=${[...selected].join(',')}` : `/chat/multi?docs=${[...selected].join(',')}`}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 transition-colors"
           >
-            <MessagesSquare className="h-3.5 w-3.5" /> Ask across {selected.size} documents
+            <MessagesSquare className="h-3.5 w-3.5" /> {selected.size === 2 ? 'Compare versions' : `Ask across ${selected.size} documents`}
           </Link>
           <button
             onClick={() => setSelected(new Set())}

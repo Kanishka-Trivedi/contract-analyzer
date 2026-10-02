@@ -1,0 +1,2 @@
+import CompareClient from '@/components/compare/CompareClient';
+export default async function ComparePage({ params }: { params: Promise<{ id: string }> }) { return <CompareClient id={Number((await params).id)} />; }

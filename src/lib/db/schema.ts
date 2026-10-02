@@ -77,6 +77,17 @@ export const messages = pgTable('messages', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const comparisons = pgTable('comparisons', {
+  id: serial('id').primaryKey(),
+  doc_a_id: integer('doc_a_id').references(() => documents.id, { onDelete: 'cascade' }).notNull(),
+  doc_b_id: integer('doc_b_id').references(() => documents.id, { onDelete: 'cascade' }).notNull(),
+  status: varchar('status', { length: 30 }).notNull().default('pending'),
+  progress_pct: integer('progress_pct').notNull().default(0),
+  summary_json: jsonb('summary_json'),
+  changes_json: jsonb('changes_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Relations
 export const documentRelations = relations(documents, ({ many }) => ({
   pages: many(pages),
