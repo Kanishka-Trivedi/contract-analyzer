@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, RefreshCw, MessagesSquare
 } from 'lucide-react';
 import Uploader from './Uploader';
+import { EmptyStateIllustration } from '@/components/ui/ClauseProofPrimitives';
 
 type Doc = {
   id: number;
@@ -24,17 +25,17 @@ type Doc = {
 type Props = { initialDocs: Doc[] };
 
 const STATUS_COLORS: Record<string, string> = {
-  ready:      'bg-emerald-100 text-emerald-700 border-emerald-200',
-  failed:     'bg-red-100 text-red-700 border-red-200',
-  uploading:  'bg-blue-100 text-blue-700 border-blue-200',
-  extracting: 'bg-amber-100 text-amber-700 border-amber-200',
-  indexing:   'bg-purple-100 text-purple-700 border-purple-200',
+  ready:      'badge-semantic badge-verified',
+  failed:     'badge-semantic badge-unverified',
+  uploading:  'badge-semantic badge-info',
+  extracting: 'badge-semantic badge-info',
+  indexing:   'badge-semantic badge-info',
 };
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'ready') return <CheckCircle2 className="h-3.5 w-3.5" />;
-  if (status === 'failed') return <AlertCircle className="h-3.5 w-3.5" />;
-  return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+  if (status === 'ready') return <div className="badge-dot dot" />;
+  if (status === 'failed') return <div className="badge-dot dot" />;
+  return <Loader2 className="h-3 w-3 animate-spin" />;
 }
 
 type SortField = 'name' | 'createdAt' | 'size';
@@ -42,7 +43,7 @@ type SortField = 'name' | 'createdAt' | 'size';
 function SortHeader({ field, label, sortField, sortAsc, onClick }: { field: SortField; label: string; sortField: SortField; sortAsc: boolean; onClick: () => void }) {
   return (
     <button
-      className="flex items-center gap-1 font-semibold uppercase tracking-wide text-xs text-slate-500 hover:text-slate-800"
+      className="flex items-center gap-1 font-semibold tracking-[0.14em] uppercase text-[10px] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
       onClick={onClick}
     >
       {label}
@@ -121,20 +122,20 @@ export default function LibraryClient({ initialDocs }: Props) {
 
       {/* Multi-select action bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
-          <span className="text-indigo-700 font-medium">{selected.size} selected</span>
+        <div className="glass flex items-center gap-3 p-3 rounded-full text-sm sticky top-4 z-50 mb-6 shadow-lg fade-up">
+          <span className="text-[var(--text)] font-semibold pl-2">{selected.size} selected</span>
           {/* Compare button — exactly 2 ready docs */}
           {compareIds ? (
             <Link
               href={`/compare/new?docs=${compareIds.older},${compareIds.newer}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 transition-colors"
+              className="btn-secondary flex items-center gap-1.5 px-4 py-2 text-xs font-semibold"
             >
               Compare versions
             </Link>
           ) : (
             <span
               title={selectedReady.length !== 2 ? 'Select exactly 2 ready documents to compare' : ''}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-300 text-slate-500 rounded-md text-xs font-medium cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 bg-[var(--paper)] text-[var(--muted)] rounded-[var(--radius-btn)] text-xs font-semibold cursor-not-allowed border border-[var(--card-line)] opacity-70"
             >
               Compare versions
             </span>
@@ -143,21 +144,21 @@ export default function LibraryClient({ initialDocs }: Props) {
           {selectedReady.length >= 2 ? (
             <Link
               href={`/documents/${selectedReady[0].id}?docs=${selectedReady.map(d => d.id).join(',')}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs font-medium hover:bg-emerald-700 transition-colors"
+              className="btn-primary flex items-center gap-1.5 px-4 py-2 text-xs font-semibold"
             >
               <MessagesSquare className="h-3.5 w-3.5" /> Ask across {selectedReady.length} documents
             </Link>
           ) : (
             <span
               title="Select 2 or more ready documents"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-300 text-slate-500 rounded-md text-xs font-medium cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 bg-[var(--paper)] text-[var(--muted)] rounded-[var(--radius-btn)] text-xs font-semibold cursor-not-allowed border border-[var(--card-line)] opacity-70"
             >
               <MessagesSquare className="h-3.5 w-3.5" /> Ask across documents
             </span>
           )}
           <button
             onClick={() => setSelected(new Set())}
-            className="ml-auto text-slate-500 hover:text-slate-700 text-xs"
+            className="ml-auto text-[var(--muted)] hover:text-[var(--text)] text-xs font-medium px-4 transition-colors"
           >
             Clear selection
           </button>
@@ -165,81 +166,81 @@ export default function LibraryClient({ initialDocs }: Props) {
       )}
 
       {/* Document table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-[var(--card)] rounded-[var(--radius-card)] border border-[var(--card-line)] shadow-[var(--shadow-card)] overflow-hidden">
         {docs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <FileText className="h-12 w-12 mb-4 opacity-40" />
-            <p className="text-base font-medium text-slate-500">No documents yet</p>
-            <p className="text-sm mt-1">Upload a PDF or DOCX file above to get started.</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <EmptyStateIllustration />
+            <p className="text-base font-semibold text-[var(--text)] mt-6">No documents yet</p>
+            <p className="text-sm text-[var(--muted)] mt-1">Upload a PDF or DOCX file above to get started.</p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-slate-100">
+          <table className="min-w-full divide-y divide-[var(--card-line)]">
             <thead>
-              <tr className="bg-slate-50">
+              <tr className="bg-[var(--paper)]">
                 <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selected.size === docs.length && docs.length > 0}
                     onChange={toggleAll}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-[var(--card-line)] text-[#8B5CF6] focus:ring-[#8B5CF6]"
                   />
                 </th>
                 <th className="px-4 py-3 text-left"><SortHeader field="name" label="Name" sortField={sortField} sortAsc={sortAsc} onClick={() => { if (sortField === 'name') setSortAsc(!sortAsc); else { setSortField('name'); setSortAsc(true); } }} /></th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Pages</th>
+                <th className="px-4 py-3 text-left font-semibold tracking-[0.14em] uppercase text-[10px] text-[var(--muted)]">Status</th>
+                <th className="px-4 py-3 text-left font-semibold tracking-[0.14em] uppercase text-[10px] text-[var(--muted)]">Pages</th>
                 <th className="px-4 py-3 text-left"><SortHeader field="size" label="Size" sortField={sortField} sortAsc={sortAsc} onClick={() => { if (sortField === 'size') setSortAsc(!sortAsc); else { setSortField('size'); setSortAsc(true); } }} /></th>
                 <th className="px-4 py-3 text-left"><SortHeader field="createdAt" label="Date" sortField={sortField} sortAsc={sortAsc} onClick={() => { if (sortField === 'createdAt') setSortAsc(!sortAsc); else { setSortField('createdAt'); setSortAsc(true); } }} /></th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                <th className="px-4 py-3 text-right font-semibold tracking-[0.14em] uppercase text-[10px] text-[var(--muted)]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--card-line)]">
               {sortedDocs.map((doc) => (
                 <tr
                   key={doc.id}
-                  className={`group transition-colors ${selected.has(doc.id) ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}
+                  className={`group transition-colors ${selected.has(doc.id) ? 'bg-[var(--paper)]' : 'hover:bg-[var(--paper)]'}`}
                 >
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selected.has(doc.id)}
                       onChange={() => toggleSelect(doc.id)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="rounded border-[var(--card-line)] text-[#8B5CF6] focus:ring-[#8B5CF6]"
                     />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <FileText className="h-4 w-4 text-[var(--gold)] flex-shrink-0" />
                       {doc.status === 'ready' ? (
                         <Link
                           href={`/documents/${doc.id}`}
-                          className="font-medium text-slate-800 hover:text-indigo-600 transition-colors truncate max-w-[260px]"
+                          className="font-semibold text-[var(--text)] hover:text-[#8B5CF6] transition-colors truncate max-w-[260px]"
                           title={doc.name}
                         >
                           {doc.name}
                         </Link>
                       ) : (
-                        <span className="font-medium text-slate-600 truncate max-w-[260px]" title={doc.name}>
+                        <span className="font-semibold text-[var(--muted)] truncate max-w-[260px]" title={doc.name}>
                           {doc.name}
                         </span>
                       )}
                     </div>
                     {doc.status_message && doc.status !== 'ready' && (
-                      <p className="text-xs text-slate-400 mt-0.5 ml-6">{doc.status_message}</p>
+                      <p className="text-xs text-[var(--muted)] mt-0.5 ml-6 opacity-80">{doc.status_message}</p>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[doc.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    <span className={STATUS_COLORS[doc.status] || 'badge-semantic badge-info'}>
                       <StatusIcon status={doc.status} />
-                      {doc.status}
+                      <span className="capitalize">{doc.status}</span>
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{doc.page_count ?? '—'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm font-medium text-[var(--text)] opacity-80">{doc.page_count ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-[var(--muted)]">
                     {doc.size < 1024 * 1024
                       ? `${(doc.size / 1024).toFixed(0)} KB`
                       : `${(doc.size / 1024 / 1024).toFixed(1)} MB`}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm text-[var(--muted)]">
                     {new Date(doc.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                   <td className="px-4 py-3">
@@ -247,7 +248,7 @@ export default function LibraryClient({ initialDocs }: Props) {
                       {doc.status === 'ready' && (
                         <Link
                           href={`/documents/${doc.id}`}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
+                          className="btn-ghost flex items-center justify-center h-8 px-3 text-xs font-semibold"
                         >
                           Open
                         </Link>
@@ -256,13 +257,13 @@ export default function LibraryClient({ initialDocs }: Props) {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleDelete(doc.id)}
-                            className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-medium"
+                            className="h-8 px-3 rounded-[var(--radius-btn)] bg-[var(--unverified)] text-white text-xs font-semibold hover:bg-opacity-90 transition-colors"
                           >
                             Confirm
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(null)}
-                            className="text-xs text-slate-500 px-2 py-1 rounded hover:bg-slate-100"
+                            className="btn-ghost h-8 px-3 text-xs font-semibold"
                           >
                             Cancel
                           </button>
@@ -271,7 +272,7 @@ export default function LibraryClient({ initialDocs }: Props) {
                         <button
                           onClick={() => setConfirmDeleteId(doc.id)}
                           disabled={deletingId === doc.id}
-                          className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                          className="h-8 w-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--unverified)] rounded-[var(--radius-btn)] hover:bg-[var(--sig-critical-soft)] transition-colors disabled:opacity-50"
                           title="Delete document"
                         >
                           {deletingId === doc.id
@@ -289,11 +290,11 @@ export default function LibraryClient({ initialDocs }: Props) {
       </div>
 
       {/* Refresh button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end mt-4">
         <button
           onClick={refresh}
           disabled={isPending}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
+          className="flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isPending ? 'animate-spin' : ''}`} /> Refresh
         </button>
