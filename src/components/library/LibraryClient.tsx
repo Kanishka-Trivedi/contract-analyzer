@@ -31,13 +31,11 @@ const STATUS_COLORS: Record<string, string> = {
   indexing:   'bg-purple-100 text-purple-700 border-purple-200',
 };
 
-const STATUS_ICONS: Record<string, React.ReactNode> = {
-  ready:      <CheckCircle2 className="h-3.5 w-3.5" />,
-  failed:     <AlertCircle className="h-3.5 w-3.5" />,
-  uploading:  <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-  extracting: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-  indexing:   <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-};
+function StatusIcon({ status }: { status: string }) {
+  if (status === 'ready') return <CheckCircle2 className="h-3.5 w-3.5" />;
+  if (status === 'failed') return <AlertCircle className="h-3.5 w-3.5" />;
+  return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+}
 
 type SortField = 'name' | 'createdAt' | 'size';
 
@@ -107,6 +105,16 @@ export default function LibraryClient({ initialDocs }: Props) {
     return sortAsc ? an - bn : bn - an;
   }), [docs, sortField, sortAsc]);
 
+  const selectedDocs = useMemo(() => docs.filter(d => selected.has(d.id)), [docs, selected]);
+  const selectedReady = useMemo(() => selectedDocs.filter(d => d.status === 'ready'), [selectedDocs]);
+  // For compare: pick older=earliest createdAt, newer=latest
+  const compareIds = useMemo(() => {
+    if (selectedReady.length !== 2) return null;
+    const sorted = [...selectedReady].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return { older: sorted[0].id, newer: sorted[1].id };
+  }, [selectedReady]);
+  const multiDocIds = useMemo(() => selectedReady.map(d => d.id).join(','), [selectedReady]);
+
   return (
     <div className="space-y-6">
       <Uploader onUploaded={refresh} />
@@ -115,12 +123,38 @@ export default function LibraryClient({ initialDocs }: Props) {
       {selected.size > 0 && (
         <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
           <span className="text-indigo-700 font-medium">{selected.size} selected</span>
-          <Link
-            href={selected.size === 2 ? `/compare/new?docs=${[...selected].join(',')}` : `/chat/multi?docs=${[...selected].join(',')}`}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 transition-colors"
-          >
-            <MessagesSquare className="h-3.5 w-3.5" /> {selected.size === 2 ? 'Compare versions' : `Ask across ${selected.size} documents`}
-          </Link>
+          {/* Compare button — exactly 2 ready docs */}
+          {compareIds ? (
+            <Link
+              href={`/compare/new?docs=${compareIds.older},${compareIds.newer}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 transition-colors"
+            >
+              Compare versions
+            </Link>
+          ) : (
+            <span
+              title={selectedReady.length !== 2 ? 'Select exactly 2 ready documents to compare' : ''}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-300 text-slate-500 rounded-md text-xs font-medium cursor-not-allowed"
+            >
+              Compare versions
+            </span>
+          )}
+          {/* Ask across N docs — 2+ ready docs */}
+          {selectedReady.length >= 2 ? (
+            <Link
+              href={`/documents/${multiDocIds}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs font-medium hover:bg-emerald-700 transition-colors"
+            >
+              <MessagesSquare className="h-3.5 w-3.5" /> Ask across {selectedReady.length} documents
+            </Link>
+          ) : (
+            <span
+              title="Select 2 or more ready documents"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-300 text-slate-500 rounded-md text-xs font-medium cursor-not-allowed"
+            >
+              <MessagesSquare className="h-3.5 w-3.5" /> Ask across documents
+            </span>
+          )}
           <button
             onClick={() => setSelected(new Set())}
             className="ml-auto text-slate-500 hover:text-slate-700 text-xs"
@@ -195,7 +229,7 @@ export default function LibraryClient({ initialDocs }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[doc.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                      {STATUS_ICONS[doc.status]}
+                      <StatusIcon status={doc.status} />
                       {doc.status}
                     </span>
                   </td>

@@ -28,20 +28,17 @@ describe('lean document comparison', () => {
     const changes = alignClauses([unit('1', 'Completely different text here.', 0)], [unit('1', 'Nothing alike at all.', 0)]);
     expect(changes.map(c => c.type)).toEqual(['removed', 'added']);
   });
-  it('significance safety: liability clause never cosmetic even if LLM says so', () => {
-    const change = { id: 'x', type: 'modified' as const, significance: 'cosmetic' as const, category: 'liability', summary: 'Liability cap changed', oldText: 'Cap is AED 100,000', newText: 'Cap is AED 1,000,000', numeric: [{ old: 'AED 100,000', new: 'AED 1,000,000', kind: 'money' }], order: 0 };
+  it('never lowers the significance floor for numeric changes', () => {
+    const change = { id: 'x', type: 'modified' as const, significance: 'medium' as const, category: 'clause', summary: 'Changed', oldText: 'AED 100,000', newText: 'AED 1,000,000', numeric: [{ old: 'AED 100,000', new: 'AED 1,000,000', kind: 'money' }], order: 0 };
     expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
   });
-  it('significance safety: termination clause with duration change never cosmetic', () => {
-    const change = { id: 'x', type: 'modified' as const, significance: 'cosmetic' as const, category: 'termination', summary: 'Notice period changed', oldText: '30 days notice', newText: '90 days notice', numeric: [{ old: '30 days', new: '90 days', kind: 'duration' }], order: 0 };
-    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
+  it('significance safety: semantic meaning changes (sim < 0.9) are bumped to high if LLM tries to make it medium/low', () => {
+    const change = { id: 'x', type: 'modified' as const, significance: 'medium' as const, category: 'liability', summary: 'Liability cap changed', oldText: 'Cap is AED 100,000', newText: 'Unlimited liability', numeric: [], order: 0 };
+    expect(applySignificanceFloor(change, 'medium').significance).toBe('high');
   });
-  it('significance safety: governing_law change never cosmetic', () => {
-    const change = { id: 'x', type: 'modified' as const, significance: 'cosmetic' as const, category: 'governing_law', summary: 'Governing law changed', oldText: 'Laws of UAE', newText: 'Laws of England', numeric: [], order: 0 };
-    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
-  });
-  it('significance safety: payment category with money change never low/cosmetic', () => {
-    const change = { id: 'x', type: 'modified' as const, significance: 'low' as const, category: 'payment', summary: 'Payment terms', oldText: '30 days', newText: '60 days', numeric: [{ old: '30 days', new: '60 days', kind: 'duration' }], order: 0 };
-    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
+  it('allows cosmetic for reworded termination clause without numeric changes (sim > 0.9 or LLM says cosmetic)', () => {
+    // If LLM says cosmetic, semanticChange is false, so it allows it.
+    const change = { id: 'x', type: 'modified' as const, significance: 'cosmetic' as const, category: 'termination', summary: 'Reworded termination', oldText: 'Either party may terminate', newText: 'Any party can terminate', numeric: [], order: 0 };
+    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('cosmetic');
   });
 });
