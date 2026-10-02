@@ -165,6 +165,13 @@ export default function ChatClient({ document }: { document: { id: number; name:
     setMessages((current) => [...current, { role: 'user', content: message }, { role: 'assistant', content: '', trace: [] }]);
     const controller = new AbortController();
     abortRef.current = controller;
+    let optimisticCreated = false;
+    if (!requestConversationId) {
+      const tempId = -Date.now();
+      const optimisticConv: Conversation = { id: tempId, title: message.slice(0, 60), createdAt: new Date().toISOString() };
+      setConversations((current) => [optimisticConv, ...current]);
+      optimisticCreated = true;
+    }
     try {
       const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId: requestConversationId, docIds: [document.id], message }), signal: controller.signal });
       if (!response.ok || !response.body) throw new Error((await response.json()).error || 'Chat request failed');
@@ -190,18 +197,6 @@ export default function ChatClient({ document }: { document: { id: number; name:
         const lines = buffer.split('\n'); buffer = lines.pop() || '';
         for (const line of lines) if (line.trim()) { const event = JSON.parse(line) as Record<string, unknown>; if (event.type === 'error') setError(String(event.message)); apply(event); }
       }
-      const historyResponse = await fetch(`/api/conversations?docId=${document.id}`);
-      const refreshedConversations = historyResponse.ok ? await historyResponse.json() as Conversation[] : [];
-      if (generationRef.current !== requestGeneration) return;
-      if (historyResponse.ok) setConversations(refreshedConversations);
-      if (!requestConversationId) {
-        const latest = refreshedConversations[0];
-        if (latest) {
-          conversationIdRef.current = latest.id;
-          setConversationId(latest.id);
-          router.replace(`/documents/${document.id}?chat=${latest.id}`);
-        }
-      }
     } catch (caught) {
       if ((caught as Error).name === 'AbortError') setNotice('Stopped. Your partial answer was saved.');
       else setError(caught instanceof Error ? caught.message : 'Chat request failed');
@@ -209,6 +204,17 @@ export default function ChatClient({ document }: { document: { id: number; name:
       if (generationRef.current === requestGeneration) {
         setStreaming(false);
         abortRef.current = null;
+        const historyResponse = await fetch(`/api/conversations?docId=${document.id}`);
+        if (historyResponse.ok) {
+          const refreshedConversations = await historyResponse.json() as Conversation[];
+          setConversations(refreshedConversations);
+          if (!requestConversationId && refreshedConversations.length > 0) {
+            const latest = refreshedConversations[0];
+            conversationIdRef.current = latest.id;
+            setConversationId(latest.id);
+            router.replace(`/documents/${document.id}?chat=${latest.id}`);
+          }
+        }
       }
     }
   };
