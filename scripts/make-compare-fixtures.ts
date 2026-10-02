@@ -6,5 +6,14 @@ async function write(path: string, lines: string[]) {
   await fs.writeFile(path, await Packer.toBuffer(doc));
 }
 
-await write('tests/fixtures/contract-v1.docx', ['1. LIABILITY. The liability cap is AED 100,000.', '2. PAYMENT. Payment is due within 30 days.', '3. REWORDING. The parties must give notice promptly.', '4. REMOVED. This clause applies to affiliates.']);
-await write('tests/fixtures/contract-v2.docx', ['1. LIABILITY. The liability cap is AED 1,000,000.', '2. PAYMENT. Payment is due within 60 days.', '3. REWORDING. The parties shall provide notice without delay.', '5. ADDED. The parties agree to mediation.']);
+async function main() {
+  await write('tests/fixtures/contract-v1.docx', ['1. LIABILITY. The liability cap is AED 100,000.', '2. PAYMENT. Payment is due within 30 days.', '3. REWORDING. The parties must give notice promptly.', '4. REMOVED. This clause applies to affiliates.']);
+  await write('tests/fixtures/contract-v2.docx', ['1. LIABILITY. The liability cap is AED 1,000,000.', '2. PAYMENT. Payment is due within 60 days.', '3. REWORDING. The parties shall provide notice without delay.', '5. ADDED. The parties agree to mediation.']);
+  console.log('Generated: tests/fixtures/contract-v1.docx');
+  console.log('Generated: tests/fixtures/contract-v2.docx');
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
