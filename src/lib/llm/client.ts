@@ -121,6 +121,17 @@ export async function* streamChatCompletion(
     yield { toolCalls: [{ index: 0, id: 'call_1', name: 'search_document', arguments: '{"doc_id":44, garbage' }] };
     return;
   }
+  if (process.env.LLM_MOCK === 'multi_round') {
+    mockCall += 1;
+    if (mockCall === 1) {
+      yield { content: 'Draft text.' };
+      yield { toolCalls: [{ index: 0, id: 'call_1', name: 'search_document', arguments: '{"doc_id":1,"query":"test"}' }] };
+      return;
+    } else {
+      yield { content: 'Final text.' };
+      return;
+    }
+  }
   if (process.env.LLM_MOCK === '1') {
     yield* mockStream();
     return;

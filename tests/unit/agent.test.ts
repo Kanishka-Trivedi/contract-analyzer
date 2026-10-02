@@ -59,6 +59,32 @@ describe('Phase 3/4 agent safeguards', () => {
     expect(errorEvent.message).toBe('The model returned no answer. Try again.');
   });
 
+  it('multi-round tool call stream asserts final text equals final round text exactly', async () => {
+    process.env.LLM_MOCK = 'multi_round';
+    const events = [];
+    for await (const event of runAgent({ docIds: [1], message: 'multi round test' })) events.push(event);
+    const finalEvent = events.find(e => e.type === 'done') as any;
+    expect(finalEvent).toBeDefined();
+    // In our multi_round mock, the first round yields "Draft text." + tools, and the second round yields "Final text." + no tools.
+    // We expect answer to be EXACTLY "Final text."
+    expect(finalEvent.answer).toBe('Final text.');
+  });
+
+  it('prose with mismatched figures produces warning, matching figures produce none', async () => {
+    const { findUnverifiedFigures } = await import('../../src/lib/compare/numeric');
+    // Mismatched figure
+    const warning = findUnverifiedFigures('The limit is AED 1,00,000.', ['The limit is AED 1,000,000']);
+    expect(warning).toEqual(['AED 1,00,000']);
+
+    // Matching figure
+    const noWarning = findUnverifiedFigures('The limit is AED 1,000,000.', ['The limit is AED 1,000,000']);
+    expect(noWarning).toEqual([]);
+
+    // Matching figure normalisation
+    const noWarningNorm = findUnverifiedFigures('The limit is 1 million.', ['The limit is 1000000']);
+    expect(noWarningNorm).toEqual([]);
+  });
+
   it('handles parallel calls whose deltas share index 0', async () => {
     process.env.LLM_MOCK = 'parallel';
     const events = [];

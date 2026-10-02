@@ -4,7 +4,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncEx
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, MessageSquare, MoreHorizontal, Send, Square, Sparkles, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import DocumentViewer, { DocumentViewerHandle, ViewerQuote } from '@/components/viewer/DocumentViewer';
+import { findUnverifiedFigures } from '@/lib/compare/numeric';
 
 type Quote = ViewerQuote & { status: 'verified' | 'partial' | 'unverified'; reason?: string };
 type Coverage = { sections_total: number; sections_read: number; pages_total: number; pages_read: number; complete: boolean };
@@ -22,18 +25,26 @@ function relativeTime(value: string) {
   return `${days} d ago`;
 }
 
-function answerParts(content: string) {
-  const parts: Array<{ text: string; quote?: boolean }> = [];
-  const regex = /<quote(?:\s+doc=['"]?[^'">\s]+['"]?)?\s*>([\s\S]*?)(?:<\/quote>|$)/g;
-  let last = 0;
-  let match;
-  while ((match = regex.exec(content))) {
-    if (match.index > last) parts.push({ text: content.slice(last, match.index) });
-    parts.push({ text: match[2], quote: true });
-    last = regex.lastIndex;
+function prepareMarkdown(text: string, quotes?: Quote[], streaming?: boolean, docs?: { name: string }[]) {
+  let processed = text;
+  if (streaming) processed = processed.replace(/<[^>]*$/, '');
+  
+  if (docs) {
+    for (const doc of docs) {
+      const safeName = doc.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      processed = processed.replace(new RegExp(`\`(${safeName})\``, 'g'), '**$1**');
+    }
   }
-  if (last < content.length) parts.push({ text: content.slice(last).replace(/<\/?quote[^>]*>/g, '') });
-  return parts;
+
+  let quoteIndex = 0;
+  processed = processed.replace(/<quote(?:\s+doc=['"]?([^'">\s]+)['"]?)?\s*>([\s\S]*?)<\/quote>/g, (match, docId, content) => {
+    quoteIndex++;
+    const quote = quotes ? quotes[quoteIndex - 1] : undefined;
+    const isUnverified = quote?.status === 'unverified';
+    const marker = isUnverified ? `~~[${quoteIndex}]~~` : `[${quoteIndex}]`;
+    return `${content} [${marker}](#quote-${quoteIndex - 1})`;
+  });
+  return processed;
 }
 
 function QuoteCards({ quotes, onOpen, docs }: { quotes: Quote[]; onOpen: (quote: Quote, index: number) => void; docs: { id: number; name: string }[] }) {
@@ -194,10 +205,11 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
         const next = [...current]; const last = next[next.length - 1];
         if (!last || last.role !== 'assistant') return current;
         if (event.type === 'token') last.content += String(event.text || '');
+        if (event.type === 'reset') last.content = '';
         if (event.type === 'tool_start' || event.type === 'tool_result') last.trace = [...(last.trace || []), event as ChatMessage['trace'] extends Array<infer T> ? T : never];
         if (event.type === 'quotes') last.quotes = event.items as Quote[];
         if (event.type === 'coverage') last.coverage = event.coverage as Coverage;
-        if (event.type === 'done') { last.quotes = event.quotes as Quote[]; last.coverage = event.coverage as Coverage; last.trace = event.tool_trace as ChatMessage['trace']; }
+        if (event.type === 'done') { last.content = String(event.answer || last.content); last.quotes = event.quotes as Quote[]; last.coverage = event.coverage as Coverage; last.trace = event.tool_trace as ChatMessage['trace']; }
         if (event.type === 'stopped') last.status = 'stopped';
         if (event.type === 'error') {
           last.status = 'error';
@@ -271,7 +283,58 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
     <div className="flex min-h-0 flex-1 overflow-hidden lg:grid lg:grid-cols-[240px_minmax(0,1fr)_var(--viewer-width)]" style={{ '--viewer-width': viewerCollapsed ? '28px' : `${viewerWidth}px` } as React.CSSProperties}>
       <aside className="flex min-h-0 flex-col overflow-y-auto border-b border-slate-200 bg-white p-4 md:border-b-0 md:border-r"><button onClick={newChat} className="mb-4 flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"><MessageSquare className="h-4 w-4" /> New chat</button><div className="mb-2 flex items-center justify-between"><div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Recent chats</div>{conversations.length > 0 && <details className="relative"><summary className="list-none cursor-pointer rounded p-1 text-slate-400 hover:bg-slate-100" title="Chat actions"><MoreHorizontal className="h-4 w-4" /></summary><div className="absolute right-0 z-10 mt-1 w-52 rounded-md border border-slate-200 bg-white p-1 shadow-lg"><button onClick={deleteAllConversations} className="w-full rounded px-2 py-1.5 text-left text-xs text-red-600 hover:bg-red-50">Delete all chats for this document</button></div></details>}</div>{loadingHistory ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : conversations.length === 0 ? <p className="text-sm text-slate-400">No conversations yet.</p> : <div className="space-y-1">{conversations.map((conversation) => <div key={conversation.id} className={`group flex items-center gap-1 rounded-md ${conversationId === conversation.id ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}><button onClick={() => openConversation(conversation.id)} className={`min-w-0 flex-1 truncate px-3 py-2 text-left text-sm ${conversationId === conversation.id ? 'text-indigo-700' : 'text-slate-600'}`}><span className="block truncate">{conversation.title || 'Untitled chat'}</span><span className="block text-[11px] text-slate-400">{hydrated ? relativeTime(conversation.createdAt) : ''}</span></button><button onClick={() => deleteConversation(conversation)} className="mr-1 rounded p-2 text-slate-400 opacity-100 hover:bg-red-50 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100" title="Delete chat" aria-label={`Delete ${conversation.title || 'chat'}`}><Trash2 className="h-4 w-4" /></button></div>)}</div>}</aside>
       <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <div ref={messageListRef} onScroll={handleMessageScroll} className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-6 md:px-10">{messages.length === 0 ? <div className="mx-auto max-w-2xl pt-12"><div className="mb-8"><p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Ask the contract{documents.length > 1 ? 's' : ''}</p><h1 className="text-3xl font-semibold tracking-tight">Find the clause, then prove it.</h1><p className="mt-3 text-slate-500">Answers are grounded in exact document text and checked before they reach you.</p></div><div className="grid gap-2 sm:grid-cols-3">{['What does the force majeure clause say?', 'What are the termination rights?', 'Summarise the payment obligations.'].map((question) => <button key={question} onClick={() => setInput(question)} className="rounded-lg border border-slate-200 bg-white p-3 text-left text-sm text-slate-600 shadow-sm hover:border-indigo-300 hover:text-indigo-700">{question}</button>)}</div></div> : messages.map((message, index) => <article key={`${message.id || index}-${message.role}`} className={message.role === 'user' ? 'ml-auto max-w-2xl' : 'max-w-3xl'}><div className={message.role === 'user' ? 'rounded-xl bg-indigo-600 px-4 py-3 text-sm text-white' : 'rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm'}>{message.role === 'assistant' && message.trace && message.trace.length > 0 && <details className="mb-3 text-xs text-slate-500" open={streaming && index === messages.length - 1}><summary className="cursor-pointer font-semibold">Research activity ({message.trace.length})</summary><div className="mt-2 space-y-1 border-l border-slate-200 pl-3">{message.trace.map((item, traceIndex) => <p key={traceIndex}>{item.type === 'tool_start' ? item.args_summary : item.summary}</p>)}</div></details>}{message.status === 'error' ? <div className="flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"><span>{message.content}</span><button type="button" onClick={() => { setInput(messages[index - 1]?.content || ''); setTimeout(() => inputRef.current?.focus(), 10); }} className="font-semibold text-red-800 hover:underline">Retry</button></div> : <div className="whitespace-pre-wrap leading-7">{answerParts(message.content).map((part, partIndex) => part.quote ? <span key={partIndex} className="rounded bg-emerald-100 px-1 text-emerald-900">{part.text}</span> : <span key={partIndex}>{part.text}</span>)}</div>}{message.status === 'stopped' && <span className="mt-3 inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Stopped</span>}{message.role === 'assistant' && message.coverage && !message.coverage.complete && message.coverage.sections_total > 0 && <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Searched {message.coverage.sections_read} of {message.coverage.sections_total} sections</div>}{message.role === 'assistant' && message.quotes && message.quotes.length === 0 && !streaming && message.status !== 'error' && message.content.trim().length > 0 && <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">No verified quotes support this answer</div>}{message.role === 'assistant' && message.quotes && message.quotes.length > 0 && !streaming && <QuoteCards quotes={message.quotes} onOpen={openCitation} docs={documents} />}</div></article>)}</div>{showJumpToLatest && <button onClick={jumpToLatest} className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow">Jump to latest</button>}
+        <div ref={messageListRef} onScroll={handleMessageScroll} className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-6 md:px-10">
+          {messages.length === 0 ? (
+            <div className="mx-auto max-w-2xl pt-12"><div className="mb-8"><p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Ask the contract{documents.length > 1 ? 's' : ''}</p><h1 className="text-3xl font-semibold tracking-tight">Find the clause, then prove it.</h1><p className="mt-3 text-slate-500">Answers are grounded in exact document text and checked before they reach you.</p></div><div className="grid gap-2 sm:grid-cols-3">{['What does the force majeure clause say?', 'What are the termination rights?', 'Summarise the payment obligations.'].map((question) => <button key={question} onClick={() => setInput(question)} className="rounded-lg border border-slate-200 bg-white p-3 text-left text-sm text-slate-600 shadow-sm hover:border-indigo-300 hover:text-indigo-700">{question}</button>)}</div></div>
+          ) : (
+            messages.map((message, index) => {
+              let unverifiedFigures: string[] = [];
+              if (message.role === 'assistant' && message.quotes && !streaming && message.status !== 'error') {
+                const verifiedQuoteTexts = message.quotes.filter(q => q.status !== 'unverified').map(q => q.text);
+                unverifiedFigures = findUnverifiedFigures(message.content, verifiedQuoteTexts);
+              }
+              return (
+                <article key={`${message.id || index}-${message.role}`} className={message.role === 'user' ? 'ml-auto max-w-2xl' : 'max-w-3xl'}>
+                  <div className={message.role === 'user' ? 'rounded-xl bg-indigo-600 px-4 py-3 text-sm text-white' : 'rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm'}>
+                    {message.role === 'assistant' && message.trace && message.trace.length > 0 && <details className="mb-3 text-xs text-slate-500" open={streaming && index === messages.length - 1}><summary className="cursor-pointer font-semibold">Research activity ({message.trace.length})</summary><div className="mt-2 space-y-1 border-l border-slate-200 pl-3">{message.trace.map((item, traceIndex) => <p key={traceIndex}>{item.type === 'tool_start' ? item.args_summary : item.summary}</p>)}</div></details>}
+                    {message.status === 'error' ? (
+                      <div className="flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"><span>{message.content}</span><button type="button" onClick={() => { setInput(messages[index - 1]?.content || ''); setTimeout(() => inputRef.current?.focus(), 10); }} className="font-semibold text-red-800 hover:underline">Retry</button></div>
+                    ) : (
+                      <div className="prose prose-sm prose-slate max-w-none leading-7">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({ node, href, children, ...props }) => {
+                              if (href?.startsWith('#quote-')) {
+                                const idx = parseInt(href.replace('#quote-', ''), 10);
+                                const quote = message.quotes?.[idx];
+                                const isUnverified = quote?.status === 'unverified';
+                                return <button type="button" onClick={() => quote && openCitation(quote, 0)} className={`ml-1 text-xs font-semibold ${isUnverified ? 'text-slate-400 line-through' : 'text-indigo-600 hover:text-indigo-800 hover:underline'}`} title={isUnverified ? 'Unverified' : 'View in document'}>{children}</button>;
+                              }
+                              return <a href={href} className="text-indigo-600 hover:underline" {...props}>{children}</a>;
+                            },
+                            table: ({ node, ...props }) => <div className="overflow-x-auto my-4"><table className="w-full border-collapse border border-slate-200 text-sm" {...props} /></div>,
+                            th: ({ node, ...props }) => <th className="border border-slate-200 bg-slate-50 px-3 py-2 text-left font-semibold" {...props} />,
+                            td: ({ node, ...props }) => <td className="border border-slate-200 px-3 py-2" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
+                          }}
+                        >
+                          {prepareMarkdown(message.content, message.quotes, streaming && index === messages.length - 1, documents)}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                    {message.status === 'stopped' && <span className="mt-3 inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Stopped</span>}
+                    {message.role === 'assistant' && message.coverage && !message.coverage.complete && message.coverage.sections_total > 0 && <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Searched {message.coverage.sections_read} of {message.coverage.sections_total} sections</div>}
+                    {message.role === 'assistant' && message.quotes && message.quotes.length === 0 && !streaming && message.status !== 'error' && message.content.trim().length > 0 && <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">No verified quotes support this answer</div>}
+                    {unverifiedFigures.length > 0 && <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Some figures in the summary could not be matched to a verified quote: {unverifiedFigures.join(', ')}</div>}
+                    {message.role === 'assistant' && message.quotes && message.quotes.length > 0 && !streaming && <QuoteCards quotes={message.quotes} onOpen={openCitation} docs={documents} />}
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+        {showJumpToLatest && <button onClick={jumpToLatest} className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow">Jump to latest</button>}
         {notice && <div className="border-t border-amber-200 bg-amber-50 px-5 py-2 text-center text-xs text-amber-800">{notice}</div>}{error && <div className="flex items-center justify-between border-t border-red-200 bg-red-50 px-5 py-2 text-xs text-red-700"><span>{error}</span><button onClick={() => setError('')} className="font-semibold">Dismiss</button></div>}
         <form onSubmit={send} className="shrink-0 border-t border-slate-200 bg-white p-4 md:px-10"><div className="mx-auto flex max-w-3xl items-end gap-2 rounded-xl border border-slate-300 bg-white p-2 shadow-sm focus-within:border-indigo-400"> <textarea ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(event); } }} placeholder="Ask about this contract..." rows={1} className="min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm outline-none" /><button type={streaming ? 'button' : 'submit'} onClick={streaming ? stop : undefined} className={`flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-white ${streaming ? 'bg-slate-700 hover:bg-slate-800' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{streaming ? <><Square className="h-4 w-4" /> Stop</> : <><Send className="h-4 w-4" /> Send</>}</button></div></form>
       </section>
