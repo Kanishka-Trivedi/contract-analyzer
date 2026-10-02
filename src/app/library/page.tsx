@@ -10,18 +10,29 @@ import { ShieldCheck, Sparkles, GitCompare } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export default async function LibraryPage() {
-  const docs = await db.select({
-    id: documents.id,
-    name: documents.name,
-    mime: documents.mime,
-    size: documents.size,
-    status: documents.status,
-    progress_pct: documents.progress_pct,
-    status_message: documents.status_message,
-    error_code: documents.error_code,
-    page_count: documents.page_count,
-    createdAt: documents.createdAt,
-  }).from(documents).orderBy(desc(documents.createdAt));
+  let docs;
+  try {
+    docs = await db.select({
+      id: documents.id,
+      name: documents.name,
+      mime: documents.mime,
+      size: documents.size,
+      status: documents.status,
+      progress_pct: documents.progress_pct,
+      status_message: documents.status_message,
+      error_code: documents.error_code,
+      page_count: documents.page_count,
+      createdAt: documents.createdAt,
+    }).from(documents).orderBy(desc(documents.createdAt));
+  } catch (error) {
+    return (
+      <main className="min-h-screen bg-[var(--paper)] flex flex-col items-center justify-center p-8 text-center">
+        <h1 className="text-xl font-semibold mb-2 text-[var(--text)]">Database Error</h1>
+        <p className="text-[var(--muted)] mb-6">Can't reach the database, retry</p>
+        <a href="/library" className="bg-[#8B5CF6] text-white rounded-[var(--radius-btn)] px-6 py-2.5 font-semibold hover:opacity-90 transition-opacity">Retry</a>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[var(--paper)]">
