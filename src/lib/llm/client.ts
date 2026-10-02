@@ -96,6 +96,10 @@ export async function* streamChatCompletion(
   tools: unknown[],
   signal?: AbortSignal,
 ): AsyncGenerator<LLMDelta> {
+  if (process.env.LLM_MOCK === 'empty') {
+    yield { content: '' };
+    return;
+  }
   if (process.env.LLM_MOCK === '1') {
     yield* mockStream();
     return;
@@ -132,8 +136,16 @@ export async function* streamChatCompletion(
         arguments: rawCall.function?.arguments,
       };
     });
+    
+    let textContent = '';
+    if (typeof delta?.content === 'string') {
+      textContent = delta.content;
+    } else if (Array.isArray(delta?.content)) {
+      textContent = (delta.content as any[]).map((p) => p.text || '').join('');
+    }
+
     yield {
-      content: delta?.content || undefined,
+      content: textContent || undefined,
       toolCalls: calls && calls.length > 0 ? calls : undefined,
       finishReason: chunk.choices[0]?.finish_reason,
     };

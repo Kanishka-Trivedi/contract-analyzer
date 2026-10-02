@@ -60,7 +60,7 @@ export async function POST(request: Request) {
           controller.close();
         } catch (error) {
           const stopped = request.signal.aborted || (error instanceof DOMException && error.name === 'AbortError');
-          await db.insert(messages).values({ conversation_id: conversationId!, role: 'assistant', content: answer, status: stopped ? 'stopped' : 'error', quotes_json: finalEvent?.quotes || null, coverage_json: finalEvent?.coverage || lastCoverage, tool_trace_json: finalEvent?.tool_trace || trace });
+          await db.insert(messages).values({ conversation_id: conversationId!, role: 'assistant', content: answer || (error instanceof Error ? error.message : 'Chat failed'), status: stopped ? 'stopped' : 'error', quotes_json: finalEvent?.quotes || null, coverage_json: finalEvent?.coverage || lastCoverage, tool_trace_json: finalEvent?.tool_trace || trace });
           controller.enqueue(encoder.encode(json(stopped ? { type: 'stopped', conversationId, messageId: userMessageId } : { type: 'error', message: error instanceof Error ? error.message : 'Chat failed' })));
           controller.close();
         }

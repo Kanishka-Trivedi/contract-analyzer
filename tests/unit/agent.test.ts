@@ -45,7 +45,18 @@ describe('Phase 3/4 agent safeguards', () => {
     const events = [];
     for await (const event of runAgent({ docIds: [1], message: 'Keep researching', limits: { maxRounds: 1 } })) events.push(event);
     expect(events.filter((event) => event.type === 'tool_start')).toHaveLength(1);
-    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(events.some((event) => event.type === 'done' || event.type === 'error')).toBe(true);
+  });
+
+  it('throws an error if the model returns no answer text after being forced', async () => {
+    process.env.LLM_MOCK = 'empty';
+    const events = [];
+    for await (const event of runAgent({ docIds: [1], message: 'Answer this.' })) events.push(event);
+    
+    // The finish generator should throw, yielding an 'error' event
+    const errorEvent = events.find(e => e.type === 'error') as any;
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent.message).toBe('The model returned no answer. Try again.');
   });
 
   it('rejects an unselected document before querying it', async () => {
