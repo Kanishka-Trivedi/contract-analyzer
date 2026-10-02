@@ -59,4 +59,23 @@ describe('Phase 3/4 agent safeguards', () => {
     });
     expect(result[0].status).toBe('unverified');
   });
+
+  it('marks a quote unverified if attributed to doc A but existing only in doc B', () => {
+    const docA = { id: 1, fullText: 'Liability is capped at AED 100,000.', normText: 'liability is capped at aed 100,000.', map: Array.from({ length: 35 }, (_, i) => i), pages: [{ pageNo: 1, start: 0, end: 35 }] };
+    const docB = { id: 2, fullText: 'Liability is capped at AED 1,000,000.', normText: 'liability is capped at aed 1,000,000.', map: Array.from({ length: 37 }, (_, i) => i), pages: [{ pageNo: 1, start: 0, end: 37 }] };
+
+    const result = verifyAnswerQuotes('<quote doc="1">Liability is capped at AED 1,000,000.</quote>', { '1': docA, '2': docB });
+    expect(result[0].status).toBe('unverified');
+  });
+
+  it('verifies multi-document answer where each quote verifies against its own document', () => {
+    const docA = { id: 1, fullText: 'Liability cap AED 100,000 in contract v1.', normText: 'liability cap aed 100,000 in contract v1.', map: Array.from({ length: 41 }, (_, i) => i), pages: [{ pageNo: 1, start: 0, end: 41 }] };
+    const docB = { id: 2, fullText: 'Liability cap AED 1,000,000 in contract v2.', normText: 'liability cap aed 1,000,000 in contract v2.', map: Array.from({ length: 43 }, (_, i) => i), pages: [{ pageNo: 1, start: 0, end: 43 }] };
+
+    const answer = 'V1 has <quote doc="1">Liability cap AED 100,000 in contract v1.</quote> while V2 has <quote doc="2">Liability cap AED 1,000,000 in contract v2.</quote>';
+    const result = verifyAnswerQuotes(answer, { '1': docA, '2': docB });
+    expect(result).toHaveLength(2);
+    expect(result[0].status).toBe('verified');
+    expect(result[1].status).toBe('verified');
+  });
 });
