@@ -11,10 +11,10 @@ export function AuroraBackground({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function LogoMark({ className = "h-8 w-8" }: { className?: string }) {
+export function LogoMark({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex items-center justify-center rounded-[20%] bg-[var(--aurora)] p-[15%] shadow-[var(--shadow-glow)] ${className}`}>
-      <ShieldCheck className="h-full w-full text-white" strokeWidth={2.5} />
+    <div className={`flex shrink-0 items-center justify-center h-10 w-10 rounded-xl bg-[var(--aurora)] shadow-[var(--shadow-glow)] ${className}`}>
+      <ShieldCheck className="text-white" size={22} strokeWidth={2.5} />
     </div>
   );
 }

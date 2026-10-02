@@ -36,27 +36,27 @@ export default async function LibraryPage() {
 
   return (
     <main className="min-h-screen bg-[var(--paper)]">
-      <div className="h-[260px] w-full">
+      <div className="w-full relative">
         <AuroraBackground>
-          <div className="max-w-6xl mx-auto px-6 pt-10 pb-16 fade-up">
+          <div className="max-w-6xl mx-auto px-6 pt-12 pb-[120px] fade-up relative z-10">
             <div className="flex items-center gap-3 mb-6">
-              <LogoMark className="h-10 w-10" />
+              <LogoMark />
               <span className="text-white font-bold text-xl tracking-tight">ClauseProof</span>
             </div>
-            <h1 className="text-4xl text-white tracking-[-0.02em] font-heading font-semibold">
+            <h1 className="text-4xl md:text-[56px] leading-tight text-white tracking-[-0.02em] font-heading font-semibold">
               Every answer, <span className="bg-clip-text text-transparent bg-[var(--aurora)]">proven.</span>
             </h1>
-            <p className="text-slate-300 mt-2 max-w-xl text-sm">Upload contracts. Ask anything. Every quote verified by code.</p>
-            <div className="flex gap-3 mt-5">
-              <div className="glass-dark rounded-full px-3 py-1.5 flex items-center gap-2 text-xs font-medium text-slate-200"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Verified quotes</div>
-              <div className="glass-dark rounded-full px-3 py-1.5 flex items-center gap-2 text-xs font-medium text-slate-200"><Sparkles className="h-3.5 w-3.5 text-amber-400" /> Citation highlights</div>
-              <div className="glass-dark rounded-full px-3 py-1.5 flex items-center gap-2 text-xs font-medium text-slate-200"><GitCompare className="h-3.5 w-3.5 text-indigo-400" /> Version compare</div>
+            <p className="text-slate-300 mt-2 max-w-xl text-lg font-medium">Upload contracts. Ask anything. Every quote verified by code.</p>
+            <div className="flex flex-wrap gap-3 mt-6">
+              <div className="glass-dark rounded-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-slate-200"><ShieldCheck className="h-4 w-4 text-emerald-400" /> Verified quotes</div>
+              <div className="glass-dark rounded-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-slate-200"><Sparkles className="h-4 w-4 text-amber-400" /> Citation highlights</div>
+              <div className="glass-dark rounded-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-slate-200"><GitCompare className="h-4 w-4 text-indigo-400" /> Version compare</div>
             </div>
           </div>
         </AuroraBackground>
       </div>
       
-      <div className="max-w-6xl mx-auto px-6 -mt-10 relative z-20 pb-16">
+      <div className="max-w-6xl mx-auto px-6 -mt-14 relative z-20 pb-16">
         <LibraryClient initialDocs={docs.map(d => ({ ...d, createdAt: d.createdAt.toISOString() }))} />
       </div>
     </main>

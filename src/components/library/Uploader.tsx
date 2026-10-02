@@ -121,7 +121,7 @@ export default function Uploader({ onUploaded }: Props) {
     <div className="mb-8">
       {/* Drop zone */}
       <div
-        className={`gradient-border p-10 text-center cursor-pointer transition-all duration-300 select-none bg-[var(--card)] z-10 ${
+        className={`relative p-[2px] cursor-pointer transition-all duration-300 select-none overflow-hidden rounded-[20px] ${
           isDragging
             ? 'scale-[1.01] shadow-[var(--shadow-glow)]'
             : 'hover:shadow-[var(--shadow-card)] hover:-translate-y-0.5'
@@ -131,11 +131,14 @@ export default function Uploader({ onUploaded }: Props) {
         onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); }}
         onClick={() => fileInputRef.current?.click()}
       >
-        <UploadCloud className={`mx-auto h-12 w-12 mb-4 text-[var(--gold)] transition-transform duration-[3s] ${isDragging ? 'scale-110' : 'scale-100'}`} />
-        <p className="text-base font-semibold text-[var(--text)] mb-1">
-          {isDragging ? 'Drop to upload' : 'Drag & drop or click to upload'}
-        </p>
-        <p className="text-sm text-[var(--muted)]">PDF or DOCX files, up to 25 MB each. Multiple files supported.</p>
+        <div className={`absolute -inset-[100%] opacity-50 bg-[var(--aurora)] ${isDragging ? 'animate-[spin_3s_linear_infinite]' : 'animate-[spin_6s_linear_infinite]'}`} />
+        <div className={`relative flex flex-col items-center justify-center p-10 rounded-[18px] transition-colors duration-300 ${isDragging ? 'bg-[#F3F4F6] sm:bg-[#F0F5FF]' : 'bg-[var(--card)]'}`}>
+          <UploadCloud className={`mx-auto h-12 w-12 mb-4 text-[#8B5CF6] transition-transform duration-300 ${isDragging ? 'scale-110' : 'scale-100'}`} />
+          <p className="text-base font-semibold text-[#0F1530] mb-1">
+            {isDragging ? 'Drop to upload' : 'Drag & drop or click to upload'}
+          </p>
+          <p className="text-sm text-[#5B6486]">PDF or DOCX files, up to 25 MB each. Multiple files supported.</p>
+        </div>
         <input
           type="file"
           ref={fileInputRef}
