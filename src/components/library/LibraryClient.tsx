@@ -1,9 +1,9 @@
 'use client';
-import React, { useState, useCallback, useTransition } from 'react';
+import React, { useState, useCallback, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  FileText, Trash2, AlertCircle, CheckCircle2, Clock, Loader2,
+  FileText, Trash2, AlertCircle, CheckCircle2, Loader2,
   ChevronDown, ChevronUp, RefreshCw, MessagesSquare
 } from 'lucide-react';
 import Uploader from './Uploader';
@@ -38,6 +38,22 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   extracting: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
   indexing:   <Loader2 className="h-3.5 w-3.5 animate-spin" />,
 };
+
+type SortField = 'name' | 'createdAt' | 'size';
+
+function SortHeader({ field, label, sortField, sortAsc, onClick }: { field: SortField; label: string; sortField: SortField; sortAsc: boolean; onClick: () => void }) {
+  return (
+    <button
+      className="flex items-center gap-1 font-semibold uppercase tracking-wide text-xs text-slate-500 hover:text-slate-800"
+      onClick={onClick}
+    >
+      {label}
+      {sortField === field
+        ? sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+        : <ChevronDown className="h-3 w-3 opacity-30" />}
+    </button>
+  );
+}
 
 export default function LibraryClient({ initialDocs }: Props) {
   const router = useRouter();
@@ -81,27 +97,15 @@ export default function LibraryClient({ initialDocs }: Props) {
     else setSelected(new Set(docs.map(d => d.id)));
   };
 
-  const sortedDocs = [...docs].sort((a, b) => {
-    let av: any = a[sortField], bv: any = b[sortField];
+  const sortedDocs = useMemo(() => [...docs].sort((a, b) => {
+    const av = a[sortField]; const bv = b[sortField];
     if (typeof av === 'string' && typeof bv === 'string') {
       return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
     }
-    return sortAsc ? (av ?? 0) - (bv ?? 0) : (bv ?? 0) - (av ?? 0);
-  });
-
-  const SortHeader = ({ field, label }: { field: typeof sortField; label: string }) => (
-    <button
-      className="flex items-center gap-1 font-semibold uppercase tracking-wide text-xs text-slate-500 hover:text-slate-800"
-      onClick={() => { if (sortField === field) setSortAsc(!sortAsc); else { setSortField(field); setSortAsc(true); } }}
-    >
-      {label}
-      {sortField === field
-        ? sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
-        : <ChevronDown className="h-3 w-3 opacity-30" />}
-    </button>
-  );
-
-  const readyDocs = docs.filter(d => d.status === 'ready');
+    const an = typeof av === 'number' ? av : 0;
+    const bn = typeof bv === 'number' ? bv : 0;
+    return sortAsc ? an - bn : bn - an;
+  }), [docs, sortField, sortAsc]);
 
   return (
     <div className="space-y-6">
@@ -146,11 +150,11 @@ export default function LibraryClient({ initialDocs }: Props) {
                     className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </th>
-                <th className="px-4 py-3 text-left"><SortHeader field="name" label="Name" /></th>
+                <th className="px-4 py-3 text-left"><SortHeader field="name" label="Name" sortField={sortField} sortAsc={sortAsc} onClick={() => { if (sortField === 'name') setSortAsc(!sortAsc); else { setSortField('name'); setSortAsc(true); } }} /></th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Pages</th>
-                <th className="px-4 py-3 text-left"><SortHeader field="size" label="Size" /></th>
-                <th className="px-4 py-3 text-left"><SortHeader field="createdAt" label="Date" /></th>
+                <th className="px-4 py-3 text-left"><SortHeader field="size" label="Size" sortField={sortField} sortAsc={sortAsc} onClick={() => { if (sortField === 'size') setSortAsc(!sortAsc); else { setSortField('size'); setSortAsc(true); } }} /></th>
+                <th className="px-4 py-3 text-left"><SortHeader field="createdAt" label="Date" sortField={sortField} sortAsc={sortAsc} onClick={() => { if (sortField === 'createdAt') setSortAsc(!sortAsc); else { setSortField('createdAt'); setSortAsc(true); } }} /></th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
               </tr>
             </thead>

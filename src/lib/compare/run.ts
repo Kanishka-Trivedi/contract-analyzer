@@ -7,6 +7,17 @@ import { alignClauses } from './align';
 import { classifyBatch } from './classify';
 import { segmentDocument } from './segment';
 
+const CATEGORY_PRIORITY: Record<string, number> = {
+  liability: 0,
+  indemnity: 1,
+  termination: 2,
+  governing_law: 3,
+  payment: 4,
+  'commercial terms': 5,
+  clause: 6,
+  drafting: 7,
+};
+
 async function doc(id: number) { const [row] = await db.select().from(documents).where(eq(documents.id, id)); const sectionRows = await db.select({ idx: sections.idx, number: sections.number, title: sections.title, start_offset: sections.start_offset, end_offset: sections.end_offset, page_from: sections.page_from }).from(sections).where(eq(sections.doc_id, id)); const pageRows = await db.select({ page_no: pages.page_no, start_offset: pages.start_offset, end_offset: pages.end_offset }).from(pages).where(eq(pages.doc_id, id)); return { row, sectionRows, pageRows }; }
 export async function runComparison(id: number, docAId: number, docBId: number) {
   try {
@@ -16,7 +27,14 @@ export async function runComparison(id: number, docAId: number, docBId: number) 
     await db.update(comparisons).set({ status: 'analysing', progress_pct: 45 }).where(eq(comparisons.id, id));
     changes = await classifyBatch(changes.filter((change) => change.type !== 'unchanged'));
     const docs = [a, b]; changes = changes.map((change) => { const oldText = change.oldText || ''; const newText = change.newText || ''; const makeQuote = (entry: typeof a, text: string) => { if (!text || !entry.row) return null; const normalized = normalizeWithMap(entry.row.full_text || ''); const result = verifyQuote({ id: entry.row.id, fullText: entry.row.full_text || '', normText: normalized.norm, map: normalized.map, pages: entry.pageRows.map((page) => ({ pageNo: page.page_no, start: page.start_offset, end: page.end_offset })) }, text); return result.status === 'unverified' ? null : { text, status: result.status, occurrences: result.occurrences }; }; return { ...change, oldQuote: makeQuote(docs[0], oldText), newQuote: makeQuote(docs[1], newText) }; });
-    const top = changes.filter((change) => change.type !== 'unchanged').sort((x, y) => ({ critical: 0, high: 1, medium: 2, low: 3, cosmetic: 4 }[x.significance] - { critical: 0, high: 1, medium: 2, low: 3, cosmetic: 4 }[y.significance])).slice(0, 15); const summary = top.map((change) => `${change.significance.toUpperCase()}: ${change.summary}`);
+    const sigOrder = { critical: 0, high: 1, medium: 2, low: 3, cosmetic: 4 };
+    const top = changes.filter((change) => change.type !== 'unchanged').sort((x, y) => {
+      const sigDiff = sigOrder[x.significance] - sigOrder[y.significance];
+      if (sigDiff !== 0) return sigDiff;
+      const xPriority = CATEGORY_PRIORITY[x.category.toLowerCase()] ?? 99;
+      const yPriority = CATEGORY_PRIORITY[y.category.toLowerCase()] ?? 99;
+      return xPriority - yPriority;
+    }).slice(0, 15); const summary = top.map((change) => `${change.significance.toUpperCase()}: ${change.summary}`);
     await db.update(comparisons).set({ status: 'complete', progress_pct: 100, summary_json: summary, changes_json: changes }).where(eq(comparisons.id, id));
   } catch (error) { await db.update(comparisons).set({ status: 'error', progress_pct: 100, summary_json: [error instanceof Error ? error.message : 'Comparison failed'], changes_json: [] }).where(eq(comparisons.id, id)); }
 }

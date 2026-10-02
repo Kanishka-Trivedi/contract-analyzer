@@ -18,4 +18,30 @@ describe('lean document comparison', () => {
     const change = { id: 'x', type: 'modified' as const, significance: 'medium' as const, category: 'clause', summary: 'Changed', oldText: 'AED 100,000', newText: 'AED 1,000,000', numeric: [{ old: 'AED 100,000', new: 'AED 1,000,000', kind: 'money' }], order: 0 };
     expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
   });
+  it('treats identical text at different position as moved', () => {
+    const changes = alignClauses([unit('1', 'Same clause text.', 0), unit('2', 'Another clause.', 1)], [unit('1', 'Another clause.', 0), unit('2', 'Same clause text.', 1)]);
+    const moved = changes.find(c => c.type === 'moved');
+    expect(moved).toBeDefined();
+    expect(moved?.oldText).toBe('Same clause text.');
+  });
+  it('treats low-similarity clause as removed/added not moved', () => {
+    const changes = alignClauses([unit('1', 'Completely different text here.', 0)], [unit('1', 'Nothing alike at all.', 0)]);
+    expect(changes.map(c => c.type)).toEqual(['removed', 'added']);
+  });
+  it('significance safety: liability clause never cosmetic even if LLM says so', () => {
+    const change = { id: 'x', type: 'modified' as const, significance: 'cosmetic' as const, category: 'liability', summary: 'Liability cap changed', oldText: 'Cap is AED 100,000', newText: 'Cap is AED 1,000,000', numeric: [{ old: 'AED 100,000', new: 'AED 1,000,000', kind: 'money' }], order: 0 };
+    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
+  });
+  it('significance safety: termination clause with duration change never cosmetic', () => {
+    const change = { id: 'x', type: 'modified' as const, significance: 'cosmetic' as const, category: 'termination', summary: 'Notice period changed', oldText: '30 days notice', newText: '90 days notice', numeric: [{ old: '30 days', new: '90 days', kind: 'duration' }], order: 0 };
+    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
+  });
+  it('significance safety: governing_law change never cosmetic', () => {
+    const change = { id: 'x', type: 'modified' as const, significance: 'cosmetic' as const, category: 'governing_law', summary: 'Governing law changed', oldText: 'Laws of UAE', newText: 'Laws of England', numeric: [], order: 0 };
+    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
+  });
+  it('significance safety: payment category with money change never low/cosmetic', () => {
+    const change = { id: 'x', type: 'modified' as const, significance: 'low' as const, category: 'payment', summary: 'Payment terms', oldText: '30 days', newText: '60 days', numeric: [{ old: '30 days', new: '60 days', kind: 'duration' }], order: 0 };
+    expect(applySignificanceFloor(change, 'cosmetic').significance).toBe('high');
+  });
 });

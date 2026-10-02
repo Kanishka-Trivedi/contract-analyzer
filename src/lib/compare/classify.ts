@@ -7,11 +7,17 @@ export const aiChangeSchema = z.array(z.object({ id: z.string(), summary: z.stri
 const rank = { cosmetic: 0, low: 1, medium: 2, high: 3, critical: 4 } as const;
 function tokens(text: string) { return new Set(normalizeQuery(text).split(/\s+/).filter(Boolean)); }
 function similarity(a: string, b: string) { const left = tokens(a), right = tokens(b); const intersection = [...left].filter((token) => right.has(token)).length; return intersection / Math.max(1, new Set([...left, ...right]).size); }
+
+const PROTECTED_CATEGORIES = new Set(['liability', 'indemnity', 'termination', 'governing_law', 'payment', 'commercial terms']);
+const PROTECTED_NUMERIC_KINDS = new Set(['money', 'duration', 'cap', 'percentage']);
+
 export function applySignificanceFloor(change: ComparisonChange, proposed: ComparisonChange['significance']) {
   const text = `${change.oldText || ''} ${change.newText || ''}`.toLowerCase();
   const numeric = (change.numeric || []).length > 0;
   const protectedTerm = /money|cap|duration|indemnity|termination|governing law|exclusivity/.test(text);
-  if (numeric || protectedTerm) {
+  const protectedCategory = PROTECTED_CATEGORIES.has(change.category.toLowerCase());
+  const protectedNumeric = (change.numeric || []).some(n => PROTECTED_NUMERIC_KINDS.has(n.kind.toLowerCase()));
+  if (numeric || protectedTerm || protectedCategory || protectedNumeric) {
     const floorSig = rank[proposed] > rank.high ? proposed : 'high';
     return { ...change, significance: rank[floorSig] > rank[change.significance] ? floorSig : change.significance };
   }
@@ -26,7 +32,19 @@ export function fallbackClassification(change: ComparisonChange) {
       return { summary: 'Clause reworded with same meaning', significance: 'cosmetic' as const, category: 'drafting' };
     }
   }
-  return { summary: numeric ? `Numeric terms changed: ${(change.numeric || []).map((item) => `${item.old} -> ${item.new}`).join(', ')}` : change.summary, significance: numeric ? 'high' as const : change.significance, category: numeric ? 'commercial terms' : change.category };
+  let category = 'clause';
+  let summary = change.summary;
+  if (numeric) {
+    const text = `${change.oldText || ''} ${change.newText || ''}`.toLowerCase();
+    if (/liability|cap|limitation of liability/.test(text)) category = 'liability';
+    else if (/indemnif/.test(text)) category = 'indemnity';
+    else if (/terminat/.test(text)) category = 'termination';
+    else if (/governing law|jurisdiction/.test(text)) category = 'governing_law';
+    else if (/payment|fee|invoice/.test(text)) category = 'payment';
+    else category = 'commercial terms';
+    summary = `Numeric terms changed: ${(change.numeric || []).map((item) => `${item.old} -> ${item.new}`).join(', ')}`;
+  }
+  return { summary, significance: numeric ? 'high' as const : change.significance, category };
 }
 export async function classifyBatch(changes: ComparisonChange[]) {
   const output: ComparisonChange[] = [];
