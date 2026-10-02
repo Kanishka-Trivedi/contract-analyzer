@@ -100,6 +100,27 @@ export async function* streamChatCompletion(
     yield { content: '' };
     return;
   }
+  if (process.env.LLM_MOCK === 'parallel') {
+    mockCall += 1;
+    if (mockCall > 1) { yield { content: 'done' }; return; }
+    yield { toolCalls: [{ index: 0, id: 'call_1', name: 'search_document', arguments: '{"doc_id"' }] };
+    yield { toolCalls: [{ index: 0, arguments: ':44,"query":"test"}' }] };
+    yield { toolCalls: [{ index: 0, id: 'call_2', name: 'search_document', arguments: '{"doc_id"' }] };
+    yield { toolCalls: [{ index: 0, arguments: ':43,"query":"test"}' }] };
+    return;
+  }
+  if (process.env.LLM_MOCK === 'concat') {
+    mockCall += 1;
+    if (mockCall > 1) { yield { content: 'done' }; return; }
+    yield { toolCalls: [{ index: 0, id: 'call_1', name: 'search_document', arguments: '{"doc_id":44,"query":"test"}{"doc_id":43,"query":"test"}' }] };
+    return;
+  }
+  if (process.env.LLM_MOCK === 'garbage') {
+    mockCall += 1;
+    if (mockCall > 1) { yield { content: 'done' }; return; }
+    yield { toolCalls: [{ index: 0, id: 'call_1', name: 'search_document', arguments: '{"doc_id":44, garbage' }] };
+    return;
+  }
   if (process.env.LLM_MOCK === '1') {
     yield* mockStream();
     return;
@@ -116,6 +137,11 @@ export async function* streamChatCompletion(
     temperature: 0,
   }, { signal }), signal);
 
+  const currentKeyForIndex = new Map<number, string>();
+  const nameCounts = new Map<number, number>();
+  const indexMap = new Map<string, number>();
+  let nextOutIndex = 0;
+
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta;
     const calls = delta?.tool_calls?.map((call) => {
@@ -124,13 +150,32 @@ export async function* streamChatCompletion(
         id?: string;
         function?: { name?: string; arguments?: string };
       };
+      let key = currentKeyForIndex.get(rawCall.index);
+      if (rawCall.id) {
+        key = `id:${rawCall.id}`;
+        currentKeyForIndex.set(rawCall.index, key);
+      } else if (rawCall.function?.name) {
+        const count = (nameCounts.get(rawCall.index) || 0) + 1;
+        nameCounts.set(rawCall.index, count);
+        key = `idx:${rawCall.index}-name:${count}`;
+        currentKeyForIndex.set(rawCall.index, key);
+      } else if (!key) {
+        key = `idx:${rawCall.index}-name:0`;
+        currentKeyForIndex.set(rawCall.index, key);
+      }
+
+      if (!indexMap.has(key)) {
+        indexMap.set(key, nextOutIndex++);
+      }
+      const outIndex = indexMap.get(key)!;
+
       const otherFields: Record<string, unknown> = { ...rawCall };
       delete otherFields.function;
       delete otherFields.index;
       delete otherFields.id;
       return {
         ...otherFields,
-        index: rawCall.index,
+        index: outIndex,
         id: rawCall.id,
         name: rawCall.function?.name,
         arguments: rawCall.function?.arguments,

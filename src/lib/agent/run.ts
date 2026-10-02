@@ -82,6 +82,42 @@ function parseToolArguments(raw: string | undefined) {
   return JSON.parse(raw) as Record<string, unknown>;
 }
 
+function splitJsonObjects(text: string): string[] {
+  const result: string[] = [];
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let start = -1;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (char === '{') {
+        if (depth === 0) start = i;
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0 && start !== -1) {
+          result.push(text.slice(start, i + 1));
+          start = -1;
+        }
+      }
+    }
+  }
+  return result;
+}
+
 export async function* runAgent(options: {
   docIds: number[];
   message: string;
@@ -159,33 +195,64 @@ export async function* runAgent(options: {
         return;
       }
 
+      let expandedCalls: typeof calls = [];
+      for (const call of calls) {
+        let isConcatenated = false;
+        try {
+          parseToolArguments(call.arguments);
+        } catch (e: any) {
+          const msg = String(e?.message || '');
+          if (msg.includes('JSON') || msg.includes('token') || msg.includes('Unexpected')) {
+            const splits = splitJsonObjects(call.arguments);
+            if (splits.length > 1) {
+              isConcatenated = true;
+              splits.forEach((splitArg, idx) => {
+                const newCall = { ...call, id: idx === 0 ? call.id : `${call.id}_${idx}`, arguments: splitArg };
+                if (idx > 0) {
+                  for (const k of Object.keys(newCall)) {
+                    if (k !== 'id' && k !== 'name' && k !== 'arguments' && k !== 'index') delete (newCall as any)[k];
+                  }
+                }
+                expandedCalls.push(newCall);
+              });
+            }
+          }
+        }
+        if (!isConcatenated) expandedCalls.push(call);
+      }
+
       messages.push({
         role: 'assistant',
         content: responseText,
-        tool_calls: calls.map((call) => {
+        tool_calls: expandedCalls.map((call) => {
           const { id, name, arguments: callArguments, ...otherFields } = call;
           return { ...otherFields, id, type: 'function' as const, function: { name, arguments: callArguments } };
         }),
       });
-      for (const call of calls) {
-        toolCallsUsed += 1;
-        const trace = { name: call.name, arguments: call.arguments };
-        toolTrace.push(trace);
-        let result: { error: string; valid_tools: string[] } | Awaited<ReturnType<typeof executeTool>>;
+
+      const executions = await Promise.all(expandedCalls.map(async (call) => {
         let parsed: Record<string, unknown> = {};
+        let result: { error: string; valid_tools: string[] } | Awaited<ReturnType<typeof executeTool>>;
         try {
           parsed = parseToolArguments(call.arguments);
-          yield { type: 'tool_start', name: call.name, args_summary: argsSummary(call.name, parsed) };
           if (!Object.prototype.hasOwnProperty.call(TOOL_DEFINITIONS.reduce<Record<string, boolean>>((all, tool) => { all[tool.function.name] = true; return all; }, {}), call.name)) {
             throw new Error(`Unknown tool: ${call.name}`);
           }
           result = await executeTool(call.name, parsed, options.docIds);
-          if (parsed.doc_id) {
-            const docId = Number(parsed.doc_id);
-            if (coverage[docId]) coverage[docId] = mergeCoverage(coverage[docId], result.coverage);
-          }
         } catch (error) {
           result = { error: error instanceof Error ? error.message : 'Invalid tool call', valid_tools: TOOL_DEFINITIONS.map((tool) => tool.function.name) };
+        }
+        return { call, parsed, result };
+      }));
+
+      for (const { call, parsed, result } of executions) {
+        toolCallsUsed += 1;
+        const trace = { name: call.name, arguments: call.arguments };
+        toolTrace.push(trace);
+        yield { type: 'tool_start', name: call.name, args_summary: argsSummary(call.name, parsed) };
+        if (parsed.doc_id && 'coverage' in result) {
+          const docId = Number(parsed.doc_id);
+          if (coverage[docId]) coverage[docId] = mergeCoverage(coverage[docId], result.coverage);
         }
         const resultText = JSON.stringify(result);
         messages.push({ role: 'tool', tool_call_id: call.id, name: call.name || 'unknown', content: resultText });

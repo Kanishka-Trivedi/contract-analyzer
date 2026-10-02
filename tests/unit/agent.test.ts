@@ -59,6 +59,30 @@ describe('Phase 3/4 agent safeguards', () => {
     expect(errorEvent.message).toBe('The model returned no answer. Try again.');
   });
 
+  it('handles parallel calls whose deltas share index 0', async () => {
+    process.env.LLM_MOCK = 'parallel';
+    const events = [];
+    for await (const event of runAgent({ docIds: [44, 43], message: 'Parallel test' })) events.push(event);
+    const starts = events.filter((e) => e.type === 'tool_start');
+    expect(starts).toHaveLength(2);
+  });
+
+  it('splits concatenated JSON objects in tool arguments', async () => {
+    process.env.LLM_MOCK = 'concat';
+    const events = [];
+    for await (const event of runAgent({ docIds: [44, 43], message: 'Concat test' })) events.push(event);
+    const starts = events.filter((e) => e.type === 'tool_start');
+    expect(starts).toHaveLength(2);
+  });
+
+  it('handles garbage JSON without crashing', async () => {
+    process.env.LLM_MOCK = 'garbage';
+    const events = [];
+    for await (const event of runAgent({ docIds: [44, 43], message: 'Garbage test' })) events.push(event);
+    const results = events.filter((e) => e.type === 'tool_result' && e.summary.includes('rejected'));
+    expect(results).toHaveLength(1);
+  });
+
   it('rejects an unselected document before querying it', async () => {
     const actualTools = await vi.importActual<typeof import('../../src/lib/agent/tools')>('../../src/lib/agent/tools');
     await expect(actualTools.executeTool('search_document', { doc_id: 2, query: 'payment', top_k: 3 }, [1])).rejects.toThrow('not selected');

@@ -84,11 +84,12 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const hydrated = useSyncExternalStore(() => () => {}, () => true, () => false);
 
+  const firstDocId = documents[0].id;
+  const docIdsStr = documents.map(d => d.id).join(',');
+
   const routeBase = useMemo(() => {
-    const firstId = documents[0].id;
-    const allIds = documents.map(d => d.id).join(',');
-    return `/documents/${firstId}?docs=${allIds}`;
-  }, [documents]);
+    return `/documents/${firstDocId}?docs=${docIdsStr}`;
+  }, [firstDocId, docIdsStr]);
 
   const openConversation = useCallback(async (id: number) => {
     abortRef.current?.abort();
@@ -109,7 +110,7 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
     const chatParam = params.get('chat');
     const loadConversations = async () => {
       try {
-        const response = await fetch(`/api/conversations?docId=${documents[0].id}`);
+        const response = await fetch(`/api/conversations?docId=${firstDocId}`);
         if (response.ok) {
           const data = await response.json();
           setConversations(data);
@@ -126,7 +127,7 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
       }
     };
     loadConversations();
-  }, [documents, openConversation]);
+  }, [firstDocId, openConversation]);
 
   useEffect(() => {
     if (!isAtLatestRef.current) return;
