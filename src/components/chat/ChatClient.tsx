@@ -80,17 +80,7 @@ export default function ChatClient({ document }: { document: { id: number; name:
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const hydrated = useSyncExternalStore(() => () => {}, () => true, () => false);
 
-  useEffect(() => {
-    fetch(`/api/conversations?docId=${document.id}`).then((response) => response.json()).then(setConversations).catch(() => setError('Could not load chat history.')).finally(() => setLoadingHistory(false));
-  }, [document.id]);
-
-  useEffect(() => {
-    if (!isAtLatestRef.current) return;
-    const list = messageListRef.current;
-    if (list) list.scrollTo({ top: list.scrollHeight, behavior: streaming ? 'auto' : 'smooth' });
-  }, [messages, streaming]);
-
-  const openConversation = async (id: number) => {
+  const openConversation = useCallback(async (id: number) => {
     abortRef.current?.abort();
     generationRef.current += 1;
     conversationIdRef.current = id;
@@ -102,7 +92,37 @@ export default function ChatClient({ document }: { document: { id: number; name:
     setConversationId(id);
     router.replace(`/documents/${document.id}?chat=${id}`);
     setMessages(data.messages.filter((message: ChatMessage) => message.role === 'user' || message.role === 'assistant').map((message: ChatMessage) => ({ ...message, quotes: message.quotes_json || [], coverage: message.coverage_json, trace: message.tool_trace_json || [] })));
-  };
+  }, [document.id, router]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const chatParam = params.get('chat');
+    const loadConversations = async () => {
+      try {
+        const response = await fetch(`/api/conversations?docId=${document.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setConversations(data);
+          if (chatParam && chatParam !== 'new' && data.some((c: Conversation) => c.id === Number(chatParam))) {
+            await openConversation(Number(chatParam));
+          }
+        } else {
+          setError('Could not load chat history.');
+        }
+      } catch {
+        setError('Could not load chat history.');
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    loadConversations();
+  }, [document.id, openConversation]);
+
+  useEffect(() => {
+    if (!isAtLatestRef.current) return;
+    const list = messageListRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: streaming ? 'auto' : 'smooth' });
+  }, [messages, streaming]);
 
   const deleteConversation = async (conversation: Conversation) => {
     if (!window.confirm("Delete this chat? This can't be undone.")) return;
