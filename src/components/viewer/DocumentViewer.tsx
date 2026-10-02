@@ -9,7 +9,7 @@ export type ViewerQuote = { docId?: string; text: string; matchedText?: string; 
 export type DocumentViewerHandle = { openCitation: (quote: ViewerQuote, occurrenceIndex?: number) => void };
 
 type Props = {
-  initialDoc: { id: number; name: string; mime: string; page_count: number | null };
+  docs: { id: number; name: string; mime: string; page_count: number | null }[];
   width: number;
   collapsed: boolean;
   onWidthChange: (width: number) => void;
@@ -46,9 +46,9 @@ function drawHighlights(container: HTMLElement, spans: Array<{ node: Text; start
   }
 }
 
-const DocumentViewer = forwardRef<DocumentViewerHandle, Props>(function DocumentViewer({ initialDoc, width, collapsed, onWidthChange, onCollapse, onNotice }, ref) {
-  const [activeDoc, setActiveDoc] = useState(initialDoc);
-  const [openDocs, setOpenDocs] = useState([initialDoc]);
+const DocumentViewer = forwardRef<DocumentViewerHandle, Props>(function DocumentViewer({ docs, width, collapsed, onWidthChange, onCollapse, onNotice }, ref) {
+  const [activeDoc, setActiveDoc] = useState(docs[0]);
+  const [openDocs, setOpenDocs] = useState(docs);
   const [pdf, setPdf] = useState<PDFDocument | null>(null);
   const [zoom, setZoom] = useState(1);
   const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set());

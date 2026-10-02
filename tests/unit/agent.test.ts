@@ -38,7 +38,7 @@ describe('Phase 3/4 agent safeguards', () => {
     for await (const event of runAgent({ docIds: [1], message: 'What does this say?' })) events.push(event);
     expect(events.some((event) => event.type === 'tool_result' && event.summary.includes('rejected'))).toBe(true);
     const done = events.find((event) => event.type === 'done');
-    expect(done?.type === 'done' && done.coverage.complete).toBe(false);
+    expect(done?.type === 'done' && done.coverage[1]?.complete).toBe(false);
   });
 
   it('enforces a caller-provided round cap', async () => {
