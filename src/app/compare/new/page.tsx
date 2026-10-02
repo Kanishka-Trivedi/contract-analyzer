@@ -45,27 +45,30 @@ function NewCompareForm() {
   const newer = ids.find(id => id !== older);
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <div className="mx-auto max-w-lg rounded-xl border border-slate-200 bg-white p-6">
-        <h1 className="text-xl font-semibold">Compare versions</h1>
-        <p className="mt-2 text-sm text-slate-500">The document with the earliest date is pre-selected as the older version. You can swap them.</p>
-        <div className="mt-5 space-y-2">
+    <main className="min-h-screen bg-[var(--paper)] p-8 flex items-center justify-center fade-up">
+      <div className="mx-auto max-w-lg w-full rounded-[var(--radius-card)] border border-[var(--card-line)] bg-[var(--card)] p-8 shadow-[var(--shadow-card)]">
+        <h1 className="text-2xl font-semibold font-heading tracking-tight text-[var(--text)]">Compare versions</h1>
+        <p className="mt-3 text-sm text-[var(--muted)]">The document with the earliest date is pre-selected as the older version. You can swap them.</p>
+        <div className="mt-6 space-y-3">
           {ids.map(id => (
-            <label key={id} className={`flex items-center gap-3 rounded border p-3 cursor-pointer ${older === id ? 'border-indigo-400 bg-indigo-50' : ''}`}>
-              <input type="radio" name="older" checked={older === id} onChange={() => setOlder(id)} />
-              <span className="flex-1 text-sm font-medium truncate">{getName(id)}</span>
-              {older === id && <span className="text-xs text-indigo-600 font-semibold">Older (A)</span>}
-              {newer === id && older !== null && <span className="text-xs text-emerald-600 font-semibold">Newer (B)</span>}
+            <label key={id} className={`flex items-center gap-3 rounded-[var(--radius-md)] border p-4 cursor-pointer transition-colors ${older === id ? 'border-[#8B5CF6] bg-[#8B5CF6]/5' : 'border-[var(--card-line)] hover:border-[#8B5CF6]/30'}`}>
+              <input type="radio" name="older" checked={older === id} onChange={() => setOlder(id)} className="accent-[#8B5CF6]" />
+              <span className="flex-1 text-sm font-semibold truncate text-[var(--text)]">{getName(id)}</span>
+              {older === id && <span className="text-[10px] tracking-[0.14em] uppercase text-[#8B5CF6] font-bold">Older (A)</span>}
+              {newer === id && older !== null && <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--verified)] font-bold">Newer (B)</span>}
             </label>
           ))}
         </div>
         {older !== null && newer !== undefined && (
-          <p className="mt-3 text-xs text-slate-500">
-            Will compare: <span className="text-red-600 font-medium">{getName(older)}</span> → <span className="text-emerald-600 font-medium">{getName(newer)}</span>
+          <p className="mt-4 text-xs font-semibold text-[var(--muted)] flex items-center gap-2">
+            <span className="uppercase tracking-[0.14em] text-[10px]">Will compare:</span>
+            <span className="text-[var(--unverified)]">{getName(older)}</span>
+            <span className="text-[var(--card-line)]">→</span>
+            <span className="text-[var(--verified)]">{getName(newer)}</span>
           </p>
         )}
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        <button disabled={busy || older === null} onClick={start} className="mt-5 rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        {error && <p className="mt-4 text-sm font-semibold text-[var(--unverified)]">{error}</p>}
+        <button disabled={busy || older === null} onClick={start} className="btn-primary mt-6 w-full disabled:opacity-50">
           {busy ? 'Starting...' : 'Compare'}
         </button>
       </div>
