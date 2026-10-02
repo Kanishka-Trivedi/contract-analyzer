@@ -14,8 +14,8 @@ export type AgentEvent =
   | { type: 'tool_result'; summary: string }
   | { type: 'token'; text: string }
   | { type: 'quotes'; items: VerifiedParsedQuote[] }
-  | { type: 'coverage'; coverage: ToolCoverage }
-  | { type: 'done'; answer: string; quotes: VerifiedParsedQuote[]; coverage: ToolCoverage; no_verified_quotes: boolean; tool_trace: unknown[] }
+  | { type: 'coverage'; coverage: Record<number, ToolCoverage> }
+  | { type: 'done'; answer: string; quotes: VerifiedParsedQuote[]; coverage: Record<number, ToolCoverage>; no_verified_quotes: boolean; tool_trace: unknown[] }
   | { type: 'error'; message: string };
 
 const MULTI_SYSTEM_PROMPT = `You answer questions about legal documents using only the results returned by tools.
@@ -92,7 +92,8 @@ export async function* runAgent(options: {
   const maxRounds = options.limits?.maxRounds ?? MAX_ROUNDS;
   const maxToolCalls = options.limits?.maxToolCalls ?? MAX_TOOL_CALLS;
   const maxOutputTokens = options.limits?.maxOutputTokens ?? MAX_OUTPUT_TOKENS;
-  const coverage = emptyCoverage();
+  const coverage: Record<number, ToolCoverage> = {};
+  for (const id of options.docIds) coverage[id] = emptyCoverage();
   const toolTrace: unknown[] = [];
   const systemPrompt = options.docIds.length > 1 ? MULTI_SYSTEM_PROMPT : SINGLE_SYSTEM_PROMPT;
   const messages: LLMMessage[] = [
@@ -165,7 +166,10 @@ export async function* runAgent(options: {
             throw new Error(`Unknown tool: ${call.name}`);
           }
           result = await executeTool(call.name, parsed, options.docIds);
-          Object.assign(coverage, mergeCoverage(coverage, result.coverage));
+          if (parsed.doc_id) {
+            const docId = Number(parsed.doc_id);
+            if (coverage[docId]) coverage[docId] = mergeCoverage(coverage[docId], result.coverage);
+          }
         } catch (error) {
           result = { error: error instanceof Error ? error.message : 'Invalid tool call', valid_tools: TOOL_DEFINITIONS.map((tool) => tool.function.name) };
         }
