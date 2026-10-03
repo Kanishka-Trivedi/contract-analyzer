@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, MessageSquare, MoreHorizontal, Send, Square, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, MessageSquare, MoreHorizontal, Send, Square, Sparkles, Trash2, ShieldCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DocumentViewer, { DocumentViewerHandle, ViewerQuote } from '@/components/viewer/DocumentViewer';
@@ -291,7 +291,7 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
         </div>
       </aside>
       <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <div ref={messageListRef} onScroll={handleMessageScroll} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-8 md:px-10 pb-32">
+        <div ref={messageListRef} onScroll={handleMessageScroll} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-8 md:px-10 pb-40">
           {messages.length === 0 ? (
             <div className="mx-auto max-w-2xl pt-12 fade-up"><div className="mb-10"><p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8B5CF6]">Ask the contract{documents.length > 1 ? 's' : ''}</p><h1 className="text-4xl font-semibold tracking-[-0.02em] font-heading">Find the clause, then prove it.</h1><p className="mt-4 text-[var(--muted)] text-lg">Answers are grounded in exact document text and checked before they reach you.</p></div><div className="grid gap-3 sm:grid-cols-3">{['What does the force majeure clause say?', 'What are the termination rights?', 'Summarise the payment obligations.'].map((question, i) => <button key={question} onClick={() => setInput(question)} className={`glass border-[var(--card-line)] rounded-[var(--radius-card)] p-4 text-left text-sm font-semibold text-[var(--muted)] hover:text-[#8B5CF6] hover:border-[#8B5CF6] hover:shadow-[var(--shadow-glow)] transition-all stagger-${i+1}`}>{question}</button>)}</div></div>
           ) : (
@@ -345,11 +345,38 @@ export default function ChatClient({ documents }: { documents: { id: number; nam
         {showJumpToLatest && <button onClick={jumpToLatest} className="absolute bottom-24 left-1/2 z-10 -translate-x-1/2 rounded-full border border-[var(--card-line)] bg-[var(--card)] px-4 py-2 text-xs font-semibold text-[#8B5CF6] shadow-lg fade-up">Jump to latest</button>}
         {notice && <div className="border-t border-[var(--partial)] bg-[var(--sig-medium-soft)] px-5 py-3 text-center text-sm font-medium text-[var(--partial)]">{notice}</div>}{error && <div className="flex items-center justify-between border-t border-[var(--unverified)] bg-[var(--sig-critical-soft)] px-5 py-3 text-sm font-medium text-[var(--unverified)]"><span>{error}</span><button onClick={() => setError('')} className="font-bold hover:underline">Dismiss</button></div>}
         <form onSubmit={send} className="absolute bottom-6 left-0 right-0 px-4 md:px-10 z-20 pointer-events-none">
-          <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-full gradient-border glass p-2 shadow-lg pointer-events-auto"> 
-            <textarea ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(event); } }} placeholder="Ask about this contract..." rows={1} className="min-h-12 flex-1 resize-none border-0 bg-transparent px-4 py-3.5 text-sm outline-none placeholder:text-[var(--muted)] font-medium text-[var(--text)]" />
-            <button type={streaming ? 'button' : 'submit'} onClick={streaming ? stop : undefined} className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-transform ${streaming ? 'bg-[var(--muted)] hover:scale-105' : 'bg-[var(--aurora)] hover:scale-105 shadow-[var(--shadow-glow)]'}`}>
-              {streaming ? <Square className="h-5 w-5 text-white fill-current" /> : <Send className="h-5 w-5 text-white ml-0.5" />}
-            </button>
+          <div className="mx-auto flex w-full max-w-[820px] items-end gap-2 rounded-[16px] border border-[#DCE0F2] bg-[#FFFFFF] p-[8px_8px_8px_16px] min-h-[56px] shadow-[0_8px_24px_-12px_rgba(15,21,48,0.18)] transition-all duration-200 focus-within:border-[#6366F1] focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.18)] pointer-events-auto"> 
+            <textarea 
+              ref={inputRef} 
+              value={input} 
+              onChange={(event) => {
+                setInput(event.target.value);
+                event.target.style.height = 'auto';
+                event.target.style.height = Math.min(event.target.scrollHeight, 6 * 22) + 'px';
+              }} 
+              onKeyDown={(event) => { 
+                if (event.key === 'Enter' && !event.shiftKey) { 
+                  event.preventDefault(); 
+                  send(event); 
+                  if (inputRef.current) inputRef.current.style.height = 'auto';
+                } 
+              }} 
+              placeholder="Ask about this contract..." 
+              rows={1} 
+              className="max-h-[132px] flex-1 resize-none bg-transparent py-[8px] text-[15px] font-sans text-[#0F1530] outline-none placeholder:text-[#8A93B5] border-none" 
+            />
+            {streaming ? (
+              <button type="button" onClick={stop} className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[12px] bg-[#FFFFFF] border-[1.5px] border-[#F43F5E] hover:bg-[#FFF1F3] active:bg-[#FFE0E5] transition-all duration-200 pointer-events-auto">
+                <Square className="h-[14px] w-[14px] text-[#F43F5E] fill-current" />
+              </button>
+            ) : (
+              <button type="submit" disabled={!input.trim()} className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[12px] bg-[#4F46E5] hover:bg-[#6366F1] hover:-translate-y-[1px] active:bg-[#3730A3] active:scale-95 disabled:bg-[#C7CAF5] disabled:hover:translate-y-0 disabled:active:scale-100 transition-all duration-200 border-none pointer-events-auto">
+                <Send className="h-[20px] w-[20px] text-white ml-[2px]" />
+              </button>
+            )}
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-[#8A93B5] pointer-events-auto font-sans">
+            <ShieldCheck className="h-[14px] w-[14px]" /> Answers use only your document. Every quote is verified.
           </div>
         </form>
       </section>
