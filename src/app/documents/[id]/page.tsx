@@ -24,7 +24,7 @@ export default async function DocumentPage({ params, searchParams }: { params: P
       <main className="h-dvh flex flex-col items-center justify-center bg-[var(--paper)] p-8 text-center">
         <h1 className="text-xl font-semibold mb-2 text-[var(--text)]">Database Error</h1>
         <p className="text-[var(--muted)] mb-6">Can't reach the database, retry</p>
-        <a href={`/documents/${idStr}${docsStr ? `?docs=${docsStr}` : ''}`} className="bg-[#8B5CF6] text-white rounded-[var(--radius-btn)] px-6 py-2.5 font-semibold hover:opacity-90 transition-opacity">Retry</a>
+        <a href={`/documents/${idStr}${docsStr ? `?docs=${docsStr}` : ''}`} className="bg-[#4F46E5] text-white rounded-[var(--radius-btn)] px-6 py-2.5 font-semibold hover:opacity-90 transition-opacity">Retry</a>
       </main>
     );
   }

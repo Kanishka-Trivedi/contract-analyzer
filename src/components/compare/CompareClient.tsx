@@ -146,7 +146,7 @@ export default function CompareClient({ id }: { id: number }) {
             <h2 className="text-xl font-semibold text-rose-900 mb-2">Something went wrong</h2>
             <p className="text-rose-700 text-sm mb-6">Could not complete the analysis. Please try again.</p>
             <div className="flex items-center justify-center gap-3">
-              <Link href="/library" className="btn-primary px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white border-0">Back to library</Link>
+              <Link href="/library" className="btn-primary px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white border-0">Back to library</Link>
             </div>
           </div>
         </div>

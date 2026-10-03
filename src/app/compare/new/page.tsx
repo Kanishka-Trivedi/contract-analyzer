@@ -140,7 +140,7 @@ function NewCompareForm() {
             <button 
               disabled={busy || !older || !newerId} 
               onClick={start} 
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#8B5CF6] px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-[#7a4ee4] transition-all disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#4F46E5] px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-[#4338CA] transition-all disabled:opacity-50"
             >
               {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting...</> : 'Start comparison'}
             </button>

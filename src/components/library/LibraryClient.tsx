@@ -257,7 +257,7 @@ export default function LibraryClient({ initialDocs }: Props) {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleDelete(doc.id)}
-                            className="h-8 px-3 rounded-[var(--radius-btn)] bg-[var(--unverified)] text-white text-xs font-semibold hover:bg-opacity-90 transition-colors"
+                            className="h-8 px-3 rounded-[var(--radius-btn)] bg-rose-700 text-white text-xs font-semibold hover:bg-opacity-90 transition-colors"
                           >
                             Confirm
                           </button>
