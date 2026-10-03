@@ -5,7 +5,8 @@ import { eq, sql } from 'drizzle-orm';
 import { GET as listConversations } from '@/app/api/conversations/route';
 import { GET as getConversation, DELETE as deleteConversation } from '@/app/api/conversations/[id]/route';
 
-describe('Conversations API', () => {
+if (!process.env.DATABASE_URL) console.log('Skipping live database tests because DATABASE_URL is missing');
+describe.skipIf(!process.env.DATABASE_URL)('Conversations API', () => {
   it('creates, lists, fetches and deletes a conversation', async () => {
     // 1. Create a conversation
     const docIds = [9999];

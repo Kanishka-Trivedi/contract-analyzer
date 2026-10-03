@@ -53,7 +53,8 @@ vi.mock('../../src/lib/agent/run', () => ({
 import { GET as getConversationsByDoc, DELETE as deleteConversationsByDoc } from '../../src/app/api/conversations/route';
 import { GET as getConversation, DELETE as deleteConversation } from '../../src/app/api/conversations/[id]/route';
 
-describe('conversation lifecycle API', () => {
+if (!process.env.DATABASE_URL) console.log('Skipping live database tests because DATABASE_URL is missing');
+describe.skipIf(!process.env.DATABASE_URL)('conversation lifecycle API', () => {
   it('lists conversations by docId using raw SQL', async () => {
     mocks.clientQuery.mockResolvedValue([
       { id: mocks.mockConversationId, title: 'Test message', doc_ids: [mocks.mockDocId], createdAt: mocks.mockConversation.created_at },

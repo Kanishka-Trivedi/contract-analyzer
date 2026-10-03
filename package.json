@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "make-fixtures": "tsx scripts/make-fixtures.ts",
     "db:push": "drizzle-kit push",
-    "db:setup": "node scripts/setup-db.js"
+    "db:setup": "tsx scripts/db-setup.ts",
+    "fixtures": "tsx scripts/make-fixtures.ts",
+    "fixtures:compare": "tsx scripts/make-compare-fixtures.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
