@@ -11,6 +11,8 @@ Upload contracts. Ask anything. Every quote is verified by code against the docu
 [![Postgres](https://img.shields.io/badge/Postgres-Drizzle_ORM-336791?logo=postgresql&logoColor=white)](https://orm.drizzle.team)
 [![Tests](https://img.shields.io/badge/tests-Vitest-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev)
 
+**[Submission note](NOTE.md)**
+
 </div>
 
 ---
@@ -31,6 +33,8 @@ Upload contracts. Ask anything. Every quote is verified by code against the docu
 12. [Scripts and fixtures](#scripts-and-fixtures)
 13. [Tests](#tests)
 14. [Project structure](#project-structure)
+15. [What is finished and what is not](#what-is-finished-and-what-is-not)
+
 ---
 
 ## What it does
@@ -81,6 +85,8 @@ This is the core requirement, so it is implemented as a pure, heavily tested fun
 9. Figures in the answer prose (amounts, percentages, durations) are cross-checked against the verified quotes. Unmatched figures get a visible warning.
 
 Unit tests cover whitespace differences, mid-sentence line breaks, hyphenation, curly quotes, case, repeated quotes, quotes spanning a page break, invented and paraphrased quotes, too-short quotes, ellipses, cross-document attribution, and Unicode text.
+
+**Where it can fail** (see also [NOTE.md](NOTE.md)): if text extraction scrambles the reading order (tables, headers and footers interleaved), a genuine quote may not be found. Over-aggressive normalisation could in theory merge distinct text. OCR-garbled text will not match what the model reads.
 
 ## Large documents
 
@@ -243,3 +249,33 @@ tests/
   unit/                   Vitest suites
 docs/screenshots/         Images used in this README
 ```
+
+## What is finished and what is not
+
+**Finished**
+
+- Part A: upload and processing (PDF and DOCX, status, scanned-PDF detection), document library, streaming chat with Stop and saved history, verified quotes, large-document handling with coverage tracking
+- Part B: citation highlighting (multi-line, cross-page, duplicates), multi-document questions, document comparison with significance, filters and sorting
+- Part C: Option 2, agentic document research with caps, live activity, and malformed-call handling
+
+**Not built**
+
+- Part C Option 1 (tracked-change redlining), by choice. Option 2 reuses the retrieval and verification layers and directly prevents the failure the brief calls worst: claiming a clause is absent after reading part of a document
+- Optional extras: anonymisation, embeddings and semantic search, answer export, clause extraction, Arabic and right-to-left layout, background job recovery, voice input
+- OCR. Scanned PDFs are rejected with a clear message rather than read
+
+**Known limitations**
+
+- Highlighting depends on the PDF text layer matching the extracted text. When the exact passage cannot be pinpointed, the viewer shows the page instead
+- Comparison quality depends on clause detection. Unusual numbering styles may be segmented as paragraphs
+- DOCX files have no fixed pages, so they are shown as a single flowing document
+- Quote verification can miss a genuine quote when extraction scrambles the reading order (tables, headers and footers)
+- Free-tier LLM limits can make answers slow or rate-limited. The app retries and shows a friendly message, but heavy use on a free key will throttle
+
+---
+
+<div align="center">
+
+Built for the engineering assignment. See [NOTE.md](NOTE.md) for the design notes and what I would build next.
+
+</div>
